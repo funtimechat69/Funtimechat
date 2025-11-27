@@ -3,126 +3,136 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FunTime Chat — Full (Rooms, PM, Friends, Block)</title>
+  <title>funtimechat — Rooms, PMs, Friends, Calls</title>
   <style>
     :root{
-      --bg1:#9be7ff; --bg2:#ffc0e6; --card:#fff; --muted:#6b7280;
-      --accent-start:#6ec6ff; --accent-end:#ff8ac6; --green:#2ecc71; --danger:#ff6b6b;
-      --textdark:#042033; font-family:Inter,Arial,Helvetica,sans-serif;
+      --bg1:#e9f8ff; --bg2:#f7faff; --card:#ffffff; --muted:#6b7280;
+      --accent:#66c6ff; --accent2:#ff8ac6; --text:#022b3a;
+      --owner-gold:#ffc857; --vip-purple:#9b6cff; --admin-white:#ffffff;
+      font-family:Inter, system-ui, Arial, Helvetica, sans-serif;
     }
     *{box-sizing:border-box}
-    body{margin:0;background:linear-gradient(180deg,var(--bg1),var(--bg2));min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:28px;}
-    .card{width:100%;max-width:1200px;background:var(--card);border-radius:14px;padding:14px;box-shadow:0 12px 40px rgba(0,0,0,.12);display:flex;gap:12px}
-    .left{flex:2;display:flex;flex-direction:column;min-width:480px}
-    .right{flex:1;display:flex;flex-direction:column;min-width:320px}
+    body{margin:0;background:linear-gradient(180deg,var(--bg1),var(--bg2));min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:18px;color:var(--text)}
+    .wrap{width:100%;max-width:1100px}
+    .card{background:var(--card);border-radius:14px;padding:14px;box-shadow:0 12px 40px rgba(2,43,58,.08);display:flex;gap:12px}
+    .left{flex:2;display:flex;flex-direction:column;min-width:420px}
+    .right{flex:1;display:flex;flex-direction:column;min-width:300px}
     .header{display:flex;align-items:center;justify-content:space-between}
-    .logo{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--accent-start),var(--accent-end));display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--textdark);font-size:20px}
-    h1{margin:0;font-size:18px;color:var(--textdark)}
+    .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--text);font-size:20px}
+    h1{margin:0;font-size:18px}
     .sub{color:var(--muted);font-size:13px}
     .toolbar{display:flex;gap:8px;align-items:center;margin-top:8px;margin-bottom:8px}
-    .messages{flex:1;overflow:auto;padding:12px;border-radius:10px;border:1px solid #eef7fb;background:linear-gradient(180deg,#fbfeff,#f7fcff)}
+    .messages{flex:1;overflow:auto;padding:12px;border-radius:12px;border:1px solid #eef7fb;background:linear-gradient(180deg,#fbfeff,#f7fcff)}
     .msg{margin-bottom:10px;max-width:78%}
     .meta{font-size:12px;color:var(--muted);margin-bottom:6px}
-    .bubble{padding:10px 12px;border-radius:12px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,0.03)}
-    .bubble.me{background:linear-gradient(90deg,var(--accent-start),var(--accent-end));color:#042033;margin-left:auto}
+    .bubble{padding:10px 12px;border-radius:12px;background:#fff;box-shadow:0 2px 6px rgba(2,43,58,0.03);word-break:break-word}
+    .bubble.me{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#fff;margin-left:auto}
     .sendRow{display:flex;gap:8px;margin-top:10px}
-    input[type="text"], input[type="search"]{flex:1;padding:10px;border-radius:10px;border:1px solid #e6f3fb}
-    button{padding:10px 12px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--accent-start),var(--accent-end));color:#022;cursor:pointer;font-weight:700}
-    .usersBox{padding:10px;border-radius:10px;border:1px solid #f0f6fb;background:#fff;overflow:auto;max-height:420px}
+    input[type="text"], input[type="search"], textarea{flex:1;padding:10px;border-radius:10px;border:1px solid #e6f3fb;outline:none}
+    button{padding:10px 12px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--accent),var(--accent2));color:#022;cursor:pointer;font-weight:700}
+    .pill{padding:8px 12px;border-radius:999px;border:1px solid #e6f3fb;background:#fff;cursor:pointer}
+    .usersBox{padding:10px;border-radius:10px;border:1px solid #f0f6fb;background:#fff;overflow:auto;max-height:360px}
     .userRow{display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:8px}
     .userLeft{display:flex;align-items:center;gap:10px}
     .avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#eafcff,#ffeaf5);display:flex;align-items:center;justify-content:center;font-weight:800;color:#033}
     .small{font-size:13px;color:var(--muted)}
-    .pill{padding:6px 10px;border-radius:999px;border:1px solid #eee;background:#fff;cursor:pointer}
     .sectionTitle{font-weight:800;margin-bottom:6px}
-    /* room create panel */
-    .roomList{display:flex;flex-direction:column;gap:6px}
-    .roomRow{display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:8px;background:#fbfdff}
-    /* PM popup */
-    .pmOverlay{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;z-index:60}
-    .pmCard{width:92%;max-width:880px;background:#fff;border-radius:10px;padding:12px;display:flex;gap:12px}
+    .roomRow{display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:8px;background:#fbfdff;margin-bottom:6px}
+    /* PM overlay & calls */
+    .pmOverlay{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;z-index:60}
+    .pmCard{width:92%;max-width:980px;background:#fff;border-radius:10px;padding:12px;display:flex;gap:12px}
     .pmLeft{flex:1;display:flex;flex-direction:column}
     .pmRight{width:300px;border-left:1px solid #eee;padding-left:10px}
     .pmMessages{flex:1;overflow:auto;padding:8px;border-radius:8px;background:#fbfdff}
     .pmInputRow{display:flex;gap:8px;margin-top:8px}
     .closeX{background:#ff6b6b;color:#fff;border-radius:8px;padding:6px 8px;border:none;cursor:pointer}
+    .badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font-weight:800;color:#042;}
+    .badge.own{background:var(--owner-gold);color:#6b3d00}
+    .badge.vip{background:var(--vip-purple);color:#fff}
+    .badge.admin{background:var(--admin-white);color:#222;border:1px solid #ddd}
+    .userName{font-weight:700}
+    video{width:100%;height:auto;border-radius:8px;background:#000}
+    .videoRow{display:flex;gap:8px}
+    .videoLocal{width:160px;height:120px;border-radius:8px;position:absolute;right:20px;bottom:20px;z-index:80;border:2px solid #fff}
     @media (max-width:980px){ .card{flex-direction:column} .left,.right{min-width:unset} .pmCard{flex-direction:column} .pmRight{width:100%;border-left:none;padding:0} }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="left">
-      <div class="header">
-        <div style="display:flex;gap:12px;align-items:center">
-          <div class="logo">MH</div>
+  <div class="wrap">
+    <div class="card">
+      <div class="left">
+        <div class="header">
+          <div style="display:flex;gap:12px;align-items:center">
+            <div class="logo" id="logoBadge">MH</div>
+            <div>
+              <h1>funtimechat</h1>
+              <div class="sub">Public · Rooms · Private PMs (friends only) · Calls</div>
+            </div>
+          </div>
+          <div id="userArea"></div>
+        </div>
+
+        <div class="toolbar">
+          <div style="display:flex;gap:8px;">
+            <button class="pill" id="btnPublic">Public Room</button>
+            <button class="pill" id="btnMyRooms">My Rooms</button>
+            <button class="pill" id="btnCreateRoom">Create Room</button>
+            <button class="pill" id="btnMatch">Find Random</button>
+          </div>
+          <div style="flex:1"></div>
+          <div class="small">Current: <strong id="currentRoomLabel">room1 (Public)</strong></div>
+        </div>
+
+        <div class="messages" id="messages"></div>
+
+        <div class="sendRow">
+          <input id="msgInput" type="text" placeholder="Type message and press Send..." />
+          <button id="sendBtn">Send</button>
+        </div>
+        <div class="small" style="margin-top:8px">Messages saved under <code id="pathInfo">/chats/room1/messages</code></div>
+      </div>
+
+      <div class="right">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <div>
-            <h1>FunTime Chat</h1>
-            <div class="sub">Public · Rooms · Private PMs (friends only)</div>
+            <div class="sectionTitle">Rooms</div>
+            <div class="small">Public & invite-only rooms</div>
+          </div>
+          <div>
+            <button class="pill" id="btnRules">Rules</button>
           </div>
         </div>
-        <div id="userArea"></div>
-      </div>
 
-      <div class="toolbar">
-        <div style="display:flex;gap:8px;">
-          <button class="pill" id="btnPublic">Public Room</button>
-          <button class="pill" id="btnMyRooms">My Rooms</button>
-          <button class="pill" id="btnCreateRoom">Create Room</button>
-          <button class="pill" id="btnMatch">Find Random</button>
+        <div style="margin-bottom:8px">
+          <div class="small" style="margin-bottom:6px">Create room</div>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <input id="newRoomName" placeholder="Room name" style="flex:1;padding:8px;border-radius:8px;border:1px solid #eee" />
+            <select id="newRoomType" style="padding:8px;border-radius:8px;border:1px solid #eee">
+              <option value="public">Public</option>
+              <option value="invite">Invite-only</option>
+            </select>
+            <button class="pill" id="createRoomBtn">Create</button>
+          </div>
         </div>
-        <div style="flex:1"></div>
-        <div class="small">Current: <strong id="currentRoomLabel">room1 (Public)</strong></div>
+
+        <div style="font-weight:700;margin-bottom:6px">Available Rooms</div>
+        <div id="roomsList" class="usersBox roomList"></div>
+
+        <div style="font-weight:700;margin-top:12px;margin-bottom:6px">People</div>
+        <div id="allUsers" class="usersBox"></div>
+
+        <div style="font-weight:700;margin-top:12px;margin-bottom:6px">Friends</div>
+        <div id="friendsList" class="usersBox"></div>
+
+        <div style="font-weight:700;margin-top:12px;margin-bottom:6px">Friend Requests</div>
+        <div id="friendReqs" class="usersBox small"></div>
+
+        <div style="margin-top:8px" class="small">Status at <code>/status/{uid}</code> • Users at <code>/users/{uid}</code></div>
       </div>
-
-      <div class="messages" id="messages"></div>
-
-      <div class="sendRow">
-        <input id="msgInput" type="text" placeholder="Type message and press Send..." />
-        <button id="sendBtn">Send</button>
-      </div>
-      <div class="small" style="margin-top:8px">Messages saved under <code id="pathInfo">/chats/room1/messages</code></div>
-    </div>
-
-    <div class="right">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div>
-          <div class="sectionTitle">Rooms</div>
-          <div class="small">Public & invite-only rooms</div>
-        </div>
-        <div>
-          <button class="pill" id="btnRules">Rules</button>
-        </div>
-      </div>
-
-      <div style="margin-bottom:8px">
-        <div class="small" style="margin-bottom:6px">Create room</div>
-        <div style="display:flex;gap:6px;margin-bottom:8px">
-          <input id="newRoomName" placeholder="Room name" style="flex:1;padding:8px;border-radius:8px;border:1px solid #eee" />
-          <select id="newRoomType" style="padding:8px;border-radius:8px;border:1px solid #eee">
-            <option value="public">Public</option>
-            <option value="invite">Invite-only</option>
-          </select>
-          <button class="pill" id="createRoomBtn">Create</button>
-        </div>
-      </div>
-
-      <div style="font-weight:700;margin-bottom:6px">Available Rooms</div>
-      <div id="roomsList" class="usersBox roomList"></div>
-
-      <div style="font-weight:700;margin-top:12px;margin-bottom:6px">People</div>
-      <div id="allUsers" class="usersBox"></div>
-
-      <div style="font-weight:700;margin-top:12px;margin-bottom:6px">Friends</div>
-      <div id="friendsList" class="usersBox"></div>
-
-      <div style="font-weight:700;margin-top:12px;margin-bottom:6px">Friend Requests</div>
-      <div id="friendReqs" class="usersBox small"></div>
-
-      <div class="small" style="margin-top:8px">Status at <code>/status/{uid}</code> • Users at <code>/users/{uid}</code></div>
     </div>
   </div>
 
-  <!-- PM popup -->
+  <!-- PM overlay (with Call UI) -->
   <div id="pmOverlay" class="pmOverlay">
     <div class="pmCard">
       <div class="pmLeft">
@@ -135,12 +145,29 @@
             <button id="pmClose" class="closeX">Close</button>
           </div>
         </div>
-        <div class="pmMessages" id="pmMessages"></div>
+
+        <div style="height:8px"></div>
+
+        <!-- Video row -->
+        <div class="videoRow" style="position:relative">
+          <video id="remoteVideo" autoplay playsinline></video>
+          <video id="localVideo" autoplay playsinline muted style="width:180px;height:120px;border-radius:8px;position:absolute;right:12px;bottom:12px;z-index:80;background:#000"></video>
+        </div>
+
+        <div class="pmMessages" id="pmMessages" style="margin-top:8px;height:200px"></div>
+
         <div class="pmInputRow">
           <input id="pmInput" type="text" placeholder="Type private message..." style="flex:1;padding:8px;border-radius:8px;border:1px solid #eee" />
-          <button id="pmSend" style="padding:8px 12px;border-radius:8px;background:linear-gradient(90deg,var(--accent-start),var(--accent-end));border:none;color:#033;font-weight:700">Send</button>
+          <button id="pmSend" class="pill">Send</button>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button id="btnAudioCall" class="pill">Audio Call</button>
+          <button id="btnVideoCall" class="pill">Video Call</button>
+          <button id="btnHangUp" class="pill" style="background:#ffefef;border:1px solid #ff6b6b">Hang Up</button>
         </div>
       </div>
+
       <div class="pmRight">
         <div style="font-weight:700;margin-bottom:8px">Profile</div>
         <div id="pmProfile" style="display:flex;gap:8px;align-items:center">
@@ -150,21 +177,21 @@
             <div class="small" id="pmEmail"></div>
           </div>
         </div>
+
         <div style="margin-top:12px">
           <button id="pmAddFriend" class="pill">Add Friend</button>
           <div style="height:8px"></div>
-          <div class="small">Private messages saved under <code>/private/{chatId}/messages</code></div>
+          <div class="small">Private messages & call signaling stored at <code>/private/{chatId}</code> and <code>/webrtc/{chatId}</code></div>
           <div style="height:8px"></div>
-          <button id="pmBlock" class="pill" style="background:#ffefef;border:1px solid var(--danger)">Block User</button>
+          <button id="pmBlock" class="pill" style="background:#ffefef;border:1px solid #ff6b6b">Block User</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Rules modal -->
   <div id="rulesModal" style="display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center">
     <div style="background:#fff;padding:16px;border-radius:10px;max-width:720px;margin:40px auto;color:#022">
-      <h3>FunTime Chat — Rules</h3>
+      <h3>funtimechat — Rules</h3>
       <ul>
         <li>No abusive language</li>
         <li>No harassment / hate speech</li>
@@ -175,20 +202,19 @@
     </div>
   </div>
 
-  <!-- notification sound -->
   <audio id="notifySound"><source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQQAAAAA" type="audio/wav"></audio>
 
-  <!-- Firebase modular SDK v9 -->
+  <!-- Firebase SDK (modular) -->
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js';
     import {
-      getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged
+      getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, signInAnonymously
     } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js';
     import {
       getDatabase, ref, set, push, onChildAdded, onValue, update, onDisconnect, serverTimestamp, get, child, remove
     } from 'https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js';
 
-    // ---------- FIREBASE CONFIG (YOUR project) ----------
+    // --------------- FIREBASE CONFIG (your project) ----------------
     const firebaseConfig = {
       apiKey: "AIzaSyB__tJ3sv3cB2N3vKHFCv8SYngJENQxwhY",
       authDomain: "funtimechat69-39947.firebaseapp.com",
@@ -236,33 +262,35 @@
     const currentRoomLabel = document.getElementById('currentRoomLabel');
     const pathInfo = document.getElementById('pathInfo');
 
+    // Call-related elements
+    const btnAudioCall = document.getElementById('btnAudioCall');
+    const btnVideoCall = document.getElementById('btnVideoCall');
+    const btnHangUp = document.getElementById('btnHangUp');
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+
     let currentUser = null;
-    let currentRoom = 'room1'; // default public
+    let currentRoom = 'room1';
     let currentPmChatId = null;
     let currentPmOtherUid = null;
+    let projectOwnerUid = null;
 
-    // helper
     function esc(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-    // AUTH UI
+    // ---------- AUTH UI ----------
     function renderUserUI(user){
       if(!user){
-        userArea.innerHTML = `<button class="pill" id="loginBtn">Sign in with Google</button>`;
-        document.getElementById('loginBtn').onclick = () => signInWithPopup(auth, provider);
+        userArea.innerHTML = `<button class="pill" id="loginBtn">Sign in with Google</button> <button class="pill" id="guestBtn">Continue as Guest</button>`;
+        document.getElementById('loginBtn').onclick = ()=> signInWithPopup(auth, provider);
+        document.getElementById('guestBtn').onclick = ()=> signInAnonymously(auth).catch(e=>alert(e.message));
       } else {
-        userArea.innerHTML = `
-          <div style="display:flex;gap:10px;align-items:center">
-            <div style="text-align:right">
-              <div style="font-weight:800">${esc(user.displayName || user.email)}</div>
-              <div class="small">${esc(user.email || '')}</div>
-            </div>
-            <button class="pill" id="logoutBtn">Logout</button>
-          </div>`;
-        document.getElementById('logoutBtn').onclick = () => signOut(auth);
+        const name = esc(user.displayName || ('Guest:'+user.uid.slice(0,6)));
+        userArea.innerHTML = `<div style="display:flex;gap:10px;align-items:center"><div style="text-align:right"><div style="font-weight:800">${name}</div><div class="small">${esc(user.email||'')}</div></div><button class="pill" id="logoutBtn">Logout</button></div>`;
+        document.getElementById('logoutBtn').onclick = ()=> signOut(auth);
       }
     }
 
-    // Save user to DB + presence
+    // Save user & presence
     async function saveUser(user){
       if(!user) return;
       const uRef = ref(db, 'users/' + user.uid);
@@ -272,94 +300,75 @@
         photoURL: user.photoURL || null,
         createdAt: serverTimestamp()
       });
-      // presence
-      const statusRef = ref(db, 'status/' + user.uid);
       const conRef = ref(db, '.info/connected');
-      onValue(conRef, snap => {
+      const statusRef = ref(db, 'status/' + user.uid);
+      onValue(conRef, snap=>{
         if(snap.val() === true){
-          set(statusRef, { state: 'online', last_changed: serverTimestamp() });
-          onDisconnect(statusRef).set({ state: 'offline', last_changed: serverTimestamp() });
+          set(statusRef, { state:'online', last_changed: serverTimestamp() });
+          onDisconnect(statusRef).set({ state:'offline', last_changed: serverTimestamp() });
         } else {
-          set(statusRef, { state: 'offline', last_changed: serverTimestamp() });
+          set(statusRef, { state:'offline', last_changed: serverTimestamp() });
         }
       });
     }
 
-    // -------- ROOM / PUBLIC MESSAGES --------
-    function setRoom(roomId, metaLabel){
+    // ---------- ROOMS & MESSAGES ----------
+    function setRoom(roomId, label){
       currentRoom = roomId;
-      currentRoomLabel.innerText = metaLabel || roomId;
-      // update path info
+      currentRoomLabel.innerText = label || roomId;
       pathInfo.innerText = currentRoom.startsWith('room') ? `/chats/${currentRoom}/messages` : `/rooms/${currentRoom}/messages`;
-      // clear messages
       messagesEl.innerHTML = '';
-      // attach listener for messages in the chosen area
       const node = currentRoom.startsWith('room') ? ref(db, `chats/${currentRoom}/messages`) : ref(db, `rooms/${currentRoom}/messages`);
-      // remove previous listeners is complex; for demo we rely on UI reset and onChildAdded continuing - small duplication is OK for demo
-      onChildAdded(node, snap => {
+      onChildAdded(node, snap=>{
         const m = snap.val();
-        // hide if blocked by current user
+        if(!m) return;
+        // skip blocked
         if(currentUser && m.uid){
           get(ref(db, `blocks/${currentUser.uid}/${m.uid}`)).then(bsnap=>{
-            if(bsnap.exists() && bsnap.val() === true) {
-              // blocked: don't show this message
-              return;
-            } else {
-              addMessageToUI(m);
-            }
+            if(bsnap.exists() && bsnap.val() === true) return;
+            addMessageToUI(m);
           });
-        } else {
-          addMessageToUI(m);
-        }
+        } else addMessageToUI(m);
       });
     }
 
-    function addMessageToUI(msg){
+    function addMessageToUI(m){
       const wrap = document.createElement('div'); wrap.className='msg';
-      const meta = document.createElement('div'); meta.className='meta'; meta.innerText = `${esc(msg.name||'Anon')} • ${new Date(msg.ts||Date.now()).toLocaleTimeString()}`;
-      const bubble = document.createElement('div'); bubble.className='bubble' + ((currentUser && msg.uid === currentUser.uid) ? ' me' : '');
-      bubble.innerText = msg.text;
-      wrap.appendChild(meta); wrap.appendChild(bubble);
-      messagesEl.appendChild(wrap);
+      const meta = document.createElement('div'); meta.className='meta';
+      meta.innerText = `${esc(m.name||'Anon')} • ${new Date(m.ts?m.ts:Date.now()).toLocaleTimeString()}`;
+      const bubble = document.createElement('div'); bubble.className='bubble' + ((currentUser && m.uid===currentUser.uid)?' me':'');
+      bubble.innerText = m.text || '';
+      wrap.appendChild(meta); wrap.appendChild(bubble); messagesEl.appendChild(wrap);
       messagesEl.scrollTop = messagesEl.scrollHeight;
+      if(!currentUser || m.uid !== currentUser.uid) notifySound.play().catch(()=>{});
     }
 
-    // send message in current room (rooms or chats)
     async function sendMessageCurrentRoom(){
       const text = msgInput.value.trim(); if(!text) return;
       if(!currentUser) return alert('Sign in first');
       const path = currentRoom.startsWith('room') ? `chats/${currentRoom}/messages` : `rooms/${currentRoom}/messages`;
       const p = push(ref(db, path));
-      await set(p, { uid: currentUser.uid, name: currentUser.displayName || currentUser.email, text, ts: serverTimestamp() });
+      await set(p, { uid: currentUser.uid, name: currentUser.displayName || currentUser.email || 'Anon', text, ts: serverTimestamp() });
       msgInput.value = '';
     }
-
     sendBtn.onclick = sendMessageCurrentRoom;
     msgInput.addEventListener('keydown', e=>{ if(e.key==='Enter') sendBtn.click(); });
 
-    // ensure default room1 welcome
-    (async function ensureWelcome(){
-      const s = await get(ref(db, `chats/${'room1'}/messages`));
-      if(!s.exists()){
-        const p = push(ref(db, `chats/${'room1'}/messages`));
-        await set(p, { uid:'system', name:'System', text:'Welcome to FunTime Chat — room1 public', ts: serverTimestamp() });
-      }
-    })();
+    (async function ensureWelcome(){ const s = await get(ref(db, `chats/room1/messages`)); if(!s.exists()){ const p = push(ref(db, `chats/room1/messages`)); await set(p, { uid:'system', name:'System', text:'Welcome to funtimechat — room1 public', ts: serverTimestamp() }); } setRoom('room1','room1 (Public)'); })();
 
-    // ---- ROOMS: create / list / join ----
-    async function createRoom(name, type){
+    // create / load rooms
+    createRoomBtn.onclick = ()=> createRoom(newRoomName.value, newRoomType.value);
+    async function createRoom(name, type='public'){
       if(!currentUser) return alert('Sign in first');
       if(!name || !name.trim()) return alert('Enter room name');
       const id = name.trim().toLowerCase().replace(/\s+/g,'_') + '_' + Date.now().toString(36);
-      const meta = { name: name.trim(), owner: currentUser.uid, type: type, createdAt: serverTimestamp() };
+      const meta = { name: name.trim(), owner: currentUser.uid, type, createdAt: serverTimestamp() };
       await set(ref(db, `rooms/${id}/meta`), meta);
-      // owner automatically member
       await set(ref(db, `rooms/${id}/members/${currentUser.uid}`), true);
       alert('Room created: ' + name);
-      loadRooms(); // refresh list
+      newRoomName.value = '';
+      loadRooms();
     }
-
-    createRoomBtn.onclick = ()=> createRoom(newRoomName.value, newRoomType.value);
 
     async function loadRooms(){
       const snap = await get(ref(db, 'rooms'));
@@ -368,272 +377,320 @@
       Object.keys(obj).forEach(id=>{
         const m = obj[id].meta || {};
         const row = document.createElement('div'); row.className='roomRow';
-        const left = document.createElement('div'); left.style.display='flex'; left.style.flexDirection='column';
-        left.innerHTML = `<div style="font-weight:700">${esc(m.name||id)}</div><div class="small">${esc(m.type||'public')}</div>`;
-        const right = document.createElement('div');
-        const join = document.createElement('button'); join.className='pill'; join.innerText='Join';
-        join.onclick = async ()=>{
-          // check invite if invite-only
+        row.innerHTML = `<div style="display:flex;flex-direction:column"><div style="font-weight:700">${esc(m.name||id)}</div><div class="small">${esc(m.type||'public')}</div></div><div><button class="pill joinBtn">Join</button></div>`;
+        roomsList.appendChild(row);
+        row.querySelector('.joinBtn').onclick = async ()=>{
           if(m.type === 'invite'){
             const allowed = await get(child(ref(db), `rooms/${id}/members/${currentUser ? currentUser.uid : 'nogu'}`));
-            if(!allowed.exists()){
-              return alert('Invite-only room. Ask owner to add you.');
-            }
+            if(!allowed.exists()) return alert('Invite-only room. Owner must add you.');
           }
           setRoom(id, m.name || id);
         };
-        const inviteBtn = document.createElement('button'); inviteBtn.className='pill'; inviteBtn.innerText='Invite';
-        inviteBtn.onclick = async ()=>{
-          if(!currentUser) return alert('Sign in first');
-          if(m.owner !== currentUser.uid) return alert('Only owner can invite (demo). Owner can add friend using DB or UI later).');
-          const uid = prompt('Enter UID to invite (demo) — use user ID from console');
-          if(uid) {
-            await set(ref(db, `rooms/${id}/members/${uid}`), true);
-            alert('Invited UID: ' + uid);
-          }
-        };
-        right.appendChild(join); right.appendChild(inviteBtn);
-        row.appendChild(left); row.appendChild(right);
-        roomsList.appendChild(row);
       });
     }
 
-    // ---- USERS / FRIENDS / REQUESTS / BLOCK ----
-    async function renderUsersList(usersObj, statusObj){
+    // ---------- USERS / FRIENDS / BLOCK ----------
+    async function renderAllUsers(){
+      const snap = await get(ref(db, 'users'));
+      const usersObj = snap.val() || {};
       allUsersEl.innerHTML = '';
-      Object.keys(usersObj || {}).forEach(uid=>{
+      const ownerSnap = await get(ref(db, 'project/ownerUid'));
+      projectOwnerUid = ownerSnap.exists() ? ownerSnap.val() : null;
+      Object.keys(usersObj).forEach(uid=>{
         const u = usersObj[uid];
-        if(uid === (currentUser && currentUser.uid)) return;
+        if(currentUser && uid === currentUser.uid) return; // skip yourself
         const row = document.createElement('div'); row.className='userRow';
         const left = document.createElement('div'); left.className='userLeft';
-        const a = document.createElement('div'); a.className='avatar'; a.innerText = u.name ? u.name[0].toUpperCase() : (u.email||'U')[0];
-        if(u.photoURL) { a.style.backgroundImage = `url(${u.photoURL})`; a.style.backgroundSize='cover'; a.innerText=''; }
-        const info = document.createElement('div'); info.innerHTML = `<div style="font-weight:700">${esc(u.name||u.email||'User')}</div><div class="small">${esc(u.email||'')}</div>`;
-        left.appendChild(a); left.appendChild(info);
+        const avatar = document.createElement('div'); avatar.className='avatar'; avatar.innerText = (u.name && u.name[0])?u.name[0].toUpperCase():(u.email?u.email[0].toUpperCase():'U');
+        const info = document.createElement('div');
+        const badgeVal = (u.badge||'').toLowerCase();
+        let badgeHtml = '';
+        if(badgeVal==='owner'){ badgeHtml = `<span class="badge own">O</span>`;}
+        else if(badgeVal==='vip'){ badgeHtml = `<span class="badge vip">V</span>`;}
+        else if(badgeVal==='admin'){ badgeHtml = `<span class="badge admin">A</span>`;}
+        info.innerHTML = `<div class="userName">${esc(u.name||u.email||uid)} ${badgeHtml}</div><div class="userMeta">${esc(u.email||'')}</div>`;
+        left.appendChild(avatar); left.appendChild(info);
         const right = document.createElement('div');
-        const add = document.createElement('button'); add.className='pill'; add.innerText='Add Friend';
-        add.onclick = ()=> sendFriendRequest(uid, u);
-        const pm = document.createElement('button'); pm.className='pill'; pm.innerText='PM'; pm.style.marginLeft='6px';
-        pm.onclick = ()=> openPmPopup(uid, u);
-        const st = document.createElement('div'); st.style.marginLeft='8px'; st.innerHTML = `<div class="small">${statusObj && statusObj[uid] && statusObj[uid].state==='online' ? 'online' : 'offline'}</div>`;
-        right.appendChild(add); right.appendChild(pm); right.appendChild(st);
+        const pmBtn = document.createElement('button'); pmBtn.className='pill'; pmBtn.innerText='PM';
+        pmBtn.onclick = ()=> openPm(uid, u);
+        const addFriendBtn = document.createElement('button'); addFriendBtn.className='pill'; addFriendBtn.innerText='Add';
+        addFriendBtn.onclick = ()=> sendFriendRequest(uid);
+        const assignBtn = document.createElement('button'); assignBtn.className='pill'; assignBtn.innerText='Badge';
+        assignBtn.onclick = async ()=>{
+          if(!currentUser) return alert('Sign in first');
+          if(currentUser.uid !== projectOwnerUid) return alert('Only project owner can assign badges.');
+          const b = prompt('Enter badge: owner / vip / admin / none');
+          if(b===null) return;
+          const nb = b.trim().toLowerCase();
+          if(nb === 'none' || nb==='') await remove(ref(db, `users/${uid}/badge`));
+          else await set(ref(db, `users/${uid}/badge`), nb);
+          renderAllUsers();
+        };
+
+        right.appendChild(pmBtn); right.appendChild(addFriendBtn);
+        if(projectOwnerUid && currentUser && currentUser.uid === projectOwnerUid) right.appendChild(assignBtn);
+        else if(!projectOwnerUid && currentUser && uid===currentUser.uid){
+          const claimBtn = document.createElement('button'); claimBtn.className='pill'; claimBtn.innerText='Claim Owner';
+          claimBtn.onclick = async ()=>{
+            if(!confirm('Claim owner for this project?')) return;
+            await set(ref(db, 'project/ownerUid'), currentUser.uid);
+            projectOwnerUid = currentUser.uid;
+            alert('You are now owner');
+            renderAllUsers();
+          };
+          right.appendChild(claimBtn);
+        }
         row.appendChild(left); row.appendChild(right);
         allUsersEl.appendChild(row);
       });
     }
 
-    async function renderFriendsList(flist){
-      friendsListEl.innerHTML = '';
-      for(const uid of Object.keys(flist || {})){
-        const uSnap = await get(child(ref(db), 'users/' + uid));
-        const u = uSnap.val() || {};
-        const row = document.createElement('div'); row.className='userRow';
-        const left = document.createElement('div'); left.className='userLeft';
-        const a = document.createElement('div'); a.className='avatar'; a.innerText = u.name ? u.name[0].toUpperCase() : 'F';
-        if(u.photoURL){ a.style.backgroundImage = `url(${u.photoURL})`; a.style.backgroundSize='cover'; a.innerText=''; }
-        const info = document.createElement('div'); info.innerHTML = `<div style="font-weight:700">${esc(u.name||u.email||'Friend')}</div><div class="small">${esc(u.email||'')}</div>`;
-        left.appendChild(a); left.appendChild(info);
-        const right = document.createElement('div');
-        const pm = document.createElement('button'); pm.className='pill'; pm.innerText='PM';
-        pm.onclick = ()=> openPmPopup(uid, u);
-        const unfriend = document.createElement('button'); unfriend.className='pill'; unfriend.innerText='Remove'; unfriend.style.marginLeft='6px';
-        unfriend.onclick = async ()=> {
-          await set(ref(db, `friends/${currentUser.uid}/list/${uid}`), null);
-          alert('Removed friend');
-        };
-        right.appendChild(pm); right.appendChild(unfriend);
-        row.appendChild(left); row.appendChild(right);
-        friendsListEl.appendChild(row);
-      }
-    }
-
-    // friend requests render
-    function renderFriendRequests(reqs){
-      friendReqsEl.innerHTML = '';
-      if(!reqs) return;
-      Object.keys(reqs).forEach(fromUid=>{
-        const r = reqs[fromUid];
-        const d = document.createElement('div'); d.style.marginBottom='8px';
-        d.innerHTML = `<div style="font-weight:700">${esc(r.name||r.email||'User')}</div><div class="small">Requested</div>`;
-        const a = document.createElement('button'); a.className='pill'; a.style.marginRight='6px'; a.innerText='Accept';
-        const b = document.createElement('button'); b.className='pill'; b.innerText='Reject';
-        a.onclick = ()=> acceptFriend(fromUid);
-        b.onclick = ()=> rejectFriend(fromUid);
-        d.appendChild(a); d.appendChild(b);
-        friendReqsEl.appendChild(d);
-      });
-    }
-
-    // send request
-    async function sendFriendRequest(toUid, toUser){
+    async function sendFriendRequest(uid){
       if(!currentUser) return alert('Sign in first');
-      await set(ref(db, `friendRequests/${toUid}/${currentUser.uid}`), { from: currentUser.uid, name: currentUser.displayName || currentUser.email, email: currentUser.email || null, ts: serverTimestamp() });
+      if(uid===currentUser.uid) return;
+      await set(ref(db, `friendRequests/${uid}/${currentUser.uid}`), { from: currentUser.uid, ts: serverTimestamp() });
       alert('Friend request sent');
     }
 
-    async function acceptFriend(fromUid){
-      if(!currentUser) return;
-      const updates = {};
-      updates[`friends/${currentUser.uid}/list/${fromUid}`] = true;
-      updates[`friends/${fromUid}/list/${currentUser.uid}`] = true;
-      updates[`friendRequests/${currentUser.uid}/${fromUid}`] = null;
-      await update(ref(db), updates);
-      alert('Friend added');
-    }
-
-    async function rejectFriend(fromUid){
-      if(!currentUser) return;
-      await set(ref(db, `friendRequests/${currentUser.uid}/${fromUid}`), null);
-    }
-
-    // ---- BLOCK (Type C) ----
-    // set a block: currentUser blocks targetUid
-    async function blockUser(targetUid){
-      if(!currentUser) return;
-      // remove mutual friendship entries
-      await set(ref(db, `friends/${currentUser.uid}/list/${targetUid}`), null);
-      await set(ref(db, `friends/${targetUid}/list/${currentUser.uid}`), null);
-      // set block entries both ways (so target can't PM and we hide their messages)
-      await set(ref(db, `blocks/${currentUser.uid}/${targetUid}`), true);
-      alert('User blocked. They were removed from your friends.');
-      // update lists UI:
-      loadAllData();
-    }
-
-    // ---- PRIVATE PM popup (Only Friends allowed to PM) ----
-    function getPrivateChatId(a,b){ return [a,b].sort().join('_'); }
-
-    async function openPmPopup(otherUid, otherUserObj){
-      if(!currentUser) return alert('Sign in first');
-      // check block conditions: if I blocked them or they blocked me, disallow
-      const myBlock = await get(ref(db, `blocks/${currentUser.uid}/${otherUid}`));
-      const theirBlock = await get(ref(db, `blocks/${otherUid}/${currentUser.uid}`));
-      if(myBlock.exists() && myBlock.val() === true) return alert('You have blocked this user.');
-      if(theirBlock.exists() && theirBlock.val() === true) return alert('You are blocked by this user.');
-
-      // PM allowed only if friends
-      const friendSnap = await get(ref(db, `friends/${currentUser.uid}/list/${otherUid}`));
-      if(!friendSnap.exists()) return alert('PM allowed only for friends. Send friend request first.');
-
-      currentPmChatId = getPrivateChatId(currentUser.uid, otherUid);
-      currentPmOtherUid = otherUid;
-      // ensure meta
-      await set(ref(db, `private/${currentPmChatId}/meta`), { members: { [currentUser.uid]: true, [otherUid]: true }, last: serverTimestamp() });
-      pmTitle.innerText = `Chat with ${otherUserObj.name || otherUserObj.email || otherUid}`;
-      pmSub.innerText = otherUserObj.email || '';
-      pmAvatar.style.backgroundImage = otherUserObj.photoURL ? `url(${otherUserObj.photoURL})` : '';
-      pmAvatar.innerText = otherUserObj.photoURL ? '' : (otherUserObj.name ? otherUserObj.name[0].toUpperCase() : 'U');
-      pmName.innerText = otherUserObj.name || otherUserObj.email || '';
-      pmEmail.innerText = otherUserObj.email || '';
-      pmMessages.innerHTML = '';
-      pmOverlay.style.display = 'flex';
-
-      // listen private messages
-      const msgsRef = ref(db, `private/${currentPmChatId}/messages`);
-      onChildAdded(msgsRef, snap=>{
-        const m = snap.val();
-        const node = document.createElement('div'); node.style.marginBottom='8px';
-        node.innerHTML = `<div style="font-weight:700">${esc(m.name||m.uid)}</div><div class="small">${esc(m.text)}</div><div class="small">${new Date(m.ts||Date.now()).toLocaleString()}</div>`;
-        pmMessages.appendChild(node);
-        pmMessages.scrollTop = pmMessages.scrollHeight;
-        if(m.uid !== (currentUser && currentUser.uid)) notifySound.play().catch(()=>{});
+    async function loadFriendRequests(){
+      if(!currentUser){ friendReqsEl.innerHTML = 'Sign in to see requests'; return; }
+      const snap = await get(ref(db, `friendRequests/${currentUser.uid}`));
+      const obj = snap.val() || {};
+      friendReqsEl.innerHTML = '';
+      Object.keys(obj).forEach(fromUid=>{
+        const el = document.createElement('div'); el.className='userRow';
+        el.innerHTML = `<div style="display:flex;flex-direction:column"><div style="font-weight:700">${esc(obj[fromUid].from)}</div><div class="small">Request</div></div>`;
+        const accept = document.createElement('button'); accept.className='pill'; accept.innerText='Accept';
+        accept.onclick = async ()=>{
+          await set(ref(db, `friends/${currentUser.uid}/${fromUid}`), true);
+          await set(ref(db, `friends/${fromUid}/${currentUser.uid}`), true);
+          await remove(ref(db, `friendRequests/${currentUser.uid}/${fromUid}`));
+          loadFriendRequests(); renderFriends();
+        };
+        const decline = document.createElement('button'); decline.className='pill'; decline.innerText='Decline';
+        decline.onclick = async ()=>{ await remove(ref(db, `friendRequests/${currentUser.uid}/${fromUid}`)); loadFriendRequests(); };
+        el.appendChild(accept); el.appendChild(decline);
+        friendReqsEl.appendChild(el);
       });
     }
 
-    pmClose.onclick = ()=> { pmOverlay.style.display='none'; pmMessages.innerHTML=''; currentPmChatId = null; currentPmOtherUid = null; };
+    async function renderFriends(){
+      if(!currentUser){ friendsListEl.innerHTML = 'Sign in to see friends'; return; }
+      const snap = await get(ref(db, `friends/${currentUser.uid}`));
+      const obj = snap.val() || {};
+      friendsListEl.innerHTML = '';
+      Object.keys(obj).forEach(uid=>{
+        const el = document.createElement('div'); el.className='userRow';
+        el.innerHTML = `<div style="font-weight:700">${esc(uid)}</div><div><button class="pill">PM</button></div>`;
+        el.querySelector('button').onclick = async ()=>{
+          const uSnap = await get(ref(db, `users/${uid}`));
+          openPm(uid, uSnap.val()||{});
+        };
+        friendsListEl.appendChild(el);
+      });
+    }
+
+    async function blockUser(uid){
+      if(!currentUser) return alert('Sign in first');
+      await set(ref(db, `blocks/${currentUser.uid}/${uid}`), true);
+      alert('Blocked');
+    }
+    async function unblockUser(uid){
+      if(!currentUser) return alert('Sign in first');
+      await remove(ref(db, `blocks/${currentUser.uid}/${uid}`));
+      alert('Unblocked');
+    }
+
+    // ---------- PRIVATE MESSAGES (friends only) ----------
+    async function openPm(uid, userObj){
+      if(!currentUser) return alert('Sign in first');
+      // check friends
+      const frSnap = await get(ref(db, `friends/${currentUser.uid}/${uid}`));
+      if(!frSnap.exists()){
+        if(!confirm('You are not friends. Send friend request?')) return;
+        await set(ref(db, `friendRequests/${uid}/${currentUser.uid}`), { from: currentUser.uid, ts: serverTimestamp() });
+        alert('Friend request sent');
+        return;
+      }
+
+      currentPmOtherUid = uid;
+      currentPmChatId = [currentUser.uid, uid].sort().join('_');
+      pmTitle.innerText = `Private: ${userObj.name || uid}`;
+      pmSub.innerText = `Saved at /private/${currentPmChatId}`;
+      pmAvatar.innerText = (userObj.name && userObj.name[0])?userObj.name[0].toUpperCase():'U';
+      pmName.innerText = userObj.name || uid;
+      pmEmail.innerText = userObj.email || '';
+      pmMessages.innerHTML = '';
+      pmOverlay.style.display = 'flex';
+
+      const node = ref(db, `private/${currentPmChatId}/messages`);
+      onChildAdded(node, snap=>{
+        const m = snap.val();
+        if(!m) return;
+        const d = document.createElement('div'); d.style.marginBottom='8px';
+        d.innerHTML = `<div style="font-size:12px;color:var(--muted)">${esc(m.name||m.uid)} • ${new Date(m.ts||Date.now()).toLocaleTimeString()}</div><div style="padding:8px;background:#fbfdff;border-radius:8px">${esc(m.text)}</div>`;
+        pmMessages.appendChild(d);
+        pmMessages.scrollTop = pmMessages.scrollHeight;
+      });
+    }
+
+    pmClose.onclick = ()=> { pmOverlay.style.display = 'none'; stopCall(); };
+
     pmSend.onclick = async ()=>{
       const text = pmInput.value.trim(); if(!text) return;
-      if(!currentUser || !currentPmChatId || !currentPmOtherUid) return;
-      // check blocks again
-      const theirBlock = await get(ref(db, `blocks/${currentPmOtherUid}/${currentUser.uid}`));
-      if(theirBlock.exists() && theirBlock.val() === true) return alert('You are blocked by this user.');
-      const myBlock = await get(ref(db, `blocks/${currentUser.uid}/${currentPmOtherUid}`));
-      if(myBlock.exists() && myBlock.val() === true) return alert('You have blocked this user.');
+      if(!currentUser || !currentPmChatId) return alert('Open PM first');
       const p = push(ref(db, `private/${currentPmChatId}/messages`));
-      await set(p, { uid: currentUser.uid, name: currentUser.displayName || currentUser.email, to: currentPmOtherUid, text, ts: serverTimestamp() });
+      await set(p, { uid: currentUser.uid, name: currentUser.displayName || currentUser.email, text, ts: serverTimestamp() });
       pmInput.value = '';
     };
 
     pmAddFriend.onclick = async ()=>{
-      if(!currentUser || !currentPmOtherUid) return;
-      await sendFriendRequest(currentPmOtherUid, {}); alert('Friend request sent via PM panel');
+      if(!currentUser || !currentPmOtherUid) return alert('Sign in and open PM');
+      await set(ref(db, `friendRequests/${currentPmOtherUid}/${currentUser.uid}`), { from: currentUser.uid, ts: serverTimestamp() });
+      alert('Friend request sent');
     };
 
-    pmBlock.onclick = async ()=>{
-      if(!currentUser || !currentPmOtherUid) return;
-      const ok = confirm('Block this user? This will remove them from your friends and prevent PMs.');
-      if(ok) await blockUser(currentPmOtherUid);
-      pmOverlay.style.display = 'none';
-    };
+    pmBlock.onclick = async ()=>{ if(!currentUser||!currentPmOtherUid) return; await set(ref(db, `blocks/${currentUser.uid}/${currentPmOtherUid}`), true); alert('Blocked'); };
 
-    // ---- MATCHING queue (simple) ----
-    btnMatch.onclick = async ()=>{
-      if(!currentUser) return alert('Sign in first');
-      const q = push(ref(db, 'matching/queue'));
-      await set(q, { uid: currentUser.uid, name: currentUser.displayName || currentUser.email, ts: serverTimestamp() });
-      alert('Joined random queue — waiting for match (demo).');
-      onValue(ref(db, 'matching/queue'), async snap=>{
-        const qobj = snap.val() || {};
-        const items = Object.entries(qobj).map(([k,v])=>({ key:k, ...v }));
-        const others = items.filter(i=> i.uid !== currentUser.uid);
-        if(others.length > 0){
-          const partner = others[0];
-          const chatId = getPrivateChatId(currentUser.uid, partner.uid);
-          await set(ref(db, `private/${chatId}/meta`), { members: { [currentUser.uid]: true, [partner.uid]: true }, last: serverTimestamp() });
-          const myKey = items.find(i=> i.uid===currentUser.uid)?.key;
-          if(myKey) await set(ref(db, `matching/queue/${myKey}`), null);
-          if(partner.key) await set(ref(db, `matching/queue/${partner.key}`), null);
-          alert('Paired with ' + partner.name);
+    // ---------- WEBRTC (calls) ----------
+    // Simple WebRTC with Firebase signaling under /webrtc/{chatId}
+    let pc = null;
+    let localStream = null;
+    let remoteStream = null;
+    let signalingRef = null;
+    let listeningRef = null;
+
+    const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+    async function startCall(kind){ // kind: 'audio' or 'video'
+      if(!currentUser || !currentPmChatId) return alert('Open PM with friend first');
+      // prepare local stream
+      try{
+        const constraints = (kind==='video') ? { audio:true, video:true } : { audio:true, video:false };
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        localVideo.srcObject = localStream;
+      }catch(e){
+        return alert('Camera/Mic access denied: '+e.message);
+      }
+      // create RTCPeerConnection
+      pc = new RTCPeerConnection(rtcConfig);
+      remoteStream = new MediaStream();
+      remoteVideo.srcObject = remoteStream;
+      // add tracks
+      localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+      pc.ontrack = (ev) => { ev.streams[0].getTracks().forEach(t=> remoteStream.addTrack(t)); };
+      pc.onicecandidate = (ev) => {
+        if(ev.candidate){
+          push(signalingRef, { type:'candidate', candidate: ev.candidate.toJSON(), from: currentUser.uid });
+        }
+      };
+
+      // signaling ref
+      signalingRef = ref(db, `webrtc/${currentPmChatId}`);
+      // clear old signals for fresh session (optional)
+      // listen for remote signals
+      listeningRef = onChildAdded(signalingRef, async snap=>{
+        const data = snap.val();
+        if(!data) return;
+        if(data.from === currentUser.uid) return; // ignore own messages
+        if(data.type === 'offer'){
+          // remote offered (if you initiated, this is unlikely)
+          await pc.setRemoteDescription(data.desc);
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          await push(signalingRef, { type:'answer', desc: pc.localDescription, from: currentUser.uid });
+        } else if(data.type === 'answer'){
+          await pc.setRemoteDescription(data.desc);
+        } else if(data.type === 'candidate'){
+          try{ await pc.addIceCandidate(data.candidate); }catch(e){ console.warn('ICE add failed', e); }
+        } else if(data.type === 'hangup'){
+          alert('Call ended by other user');
+          stopCall();
         }
       });
-    };
 
-    // RULES modal
-    btnRules.onclick = ()=> rulesModal.style.display='flex';
-    closeRules.onclick = ()=> rulesModal.style.display='none';
+      // create offer
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await push(signalingRef, { type:'offer', desc: pc.localDescription, from: currentUser.uid });
 
-    // ---- LISTENERS: users, status, friendRequests, rooms ----
-    onValue(ref(db, 'users'), async snap => {
-      const users = snap.val() || {};
-      const statusSnap = await get(ref(db, 'status'));
-      const status = statusSnap.val() || {};
-      renderUsersList(users, status);
-    });
-
-    onValue(ref(db, 'status'), snap => {
-      // update online badges by re-rendering users (simpler)
-      get(ref(db, 'users')).then(snap2 => { renderUsersList(snap2.val() || {}, snap.val() || {}); });
-    });
-
-    function listenMyData(uid){
-      if(!uid) return;
-      onValue(ref(db, `friendRequests/${uid}`), snap => { renderFriendRequests(snap.val()); });
-      onValue(ref(db, `friends/${uid}/list`), snap => { renderFriendsList(snap.val() || {}); });
-      onValue(ref(db, 'rooms'), snap => { loadRooms(); });
-      // optionally listen blocks to update UI if needed
+      // UI: show connecting
+      pmSub.innerText = `Calling (${kind}) — signaling via /webrtc/${currentPmChatId}`;
     }
 
-    // ---- AUTH STATE ----
-    onAuthStateChanged(auth, async user => {
+    async function answerCall(){
+      // create pc if not
+      if(!pc){
+        pc = new RTCPeerConnection(rtcConfig);
+        remoteStream = new MediaStream();
+        remoteVideo.srcObject = remoteStream;
+        pc.ontrack = (ev) => { ev.streams[0].getTracks().forEach(t=> remoteStream.addTrack(t)); };
+        pc.onicecandidate = (ev)=>{
+          if(ev.candidate) push(signalingRef, { type:'candidate', candidate: ev.candidate.toJSON(), from: currentUser.uid });
+        };
+      }
+      // attach local stream if not present (try to get mic/cam)
+      if(!localStream){
+        try{ localStream = await navigator.mediaDevices.getUserMedia({ audio:true, video:true }); localVideo.srcObject = localStream; localStream.getTracks().forEach(t => pc.addTrack(t, localStream)); }catch(e){ console.warn(e); }
+      }
+      // find existing offer (listen will handle setting remote desc)
+      // create answer handled in onChildAdded when offer arrives
+    }
+
+    async function stopCall(){
+      try{
+        if(pc){ pc.close(); pc = null; }
+        if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream = null; localVideo.srcObject = null; }
+        if(remoteStream){ remoteStream.getTracks().forEach(t=>t.stop()); remoteStream = null; remoteVideo.srcObject = null; }
+        if(signalingRef){
+          // send hangup message
+          await push(signalingRef, { type:'hangup', from: currentUser ? currentUser.uid : 'anon' });
+        }
+      }catch(e){ console.warn(e); }
+      pmSub.innerText = `Private chat ID: ${currentPmChatId}`;
+    }
+
+    // Bind call buttons
+    btnAudioCall.onclick = ()=> startCall('audio');
+    btnVideoCall.onclick = ()=> startCall('video');
+    btnHangUp.onclick = ()=> stopCall();
+
+    // ---------- AUTH listener ----------
+    onAuthStateChanged(auth, async user=>{
       currentUser = user;
       renderUserUI(user);
       if(user){
         await saveUser(user);
-        listenMyData(user.uid);
-        // default to room1
-        setRoom('room1', 'room1 (Public)');
+        const ownerSnap = await get(ref(db, 'project/ownerUid'));
+        projectOwnerUid = ownerSnap.exists() ? ownerSnap.val() : null;
+        renderAllUsers();
+        loadRooms();
+        loadFriendRequests();
+        renderFriends();
       } else {
-        // clear UI
+        renderAllUsers();
+        loadRooms();
       }
     });
 
-    // ---- UTILITY: load rooms on start ----
-    loadRooms();
+    // ---------- initial UI bindings ----------
+    document.getElementById('btnRules').onclick = ()=> rulesModal.style.display = 'flex';
+    closeRules.onclick = ()=> rulesModal.style.display = 'none';
+    document.getElementById('btnPublic').onclick = ()=> setRoom('room1','room1 (Public)');
+    document.getElementById('btnMyRooms').onclick = ()=> setRoom('myrooms','My Rooms');
+    document.getElementById('btnMatch').onclick = async ()=>{
+      const snap = await get(ref(db, 'rooms')); const obj = snap.val() || {}; const keys = Object.keys(obj).filter(k => (obj[k].meta && obj[k].meta.type === 'public')); if(keys.length===0){ alert('No public rooms'); return; } const r = keys[Math.floor(Math.random()*keys.length)]; setRoom(r, obj[r].meta.name||r);
+    };
 
-    // Expose a few helpers for console debugging
-    window._ft = { openPmPopup, createRoom, sendFriendRequest, acceptFriend, blockUser };
+    // periodic refresh
+    setInterval(()=>{ renderAllUsers(); loadRooms(); loadFriendRequests(); renderFriends(); }, 15000);
 
-    // End of script
+    // initial loads
+    loadRooms(); renderAllUsers();
+
+    // small helper to console
+    window.FT = { setRoom, createRoom };
+
   </script>
 </body>
 </html>
