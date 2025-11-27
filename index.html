@@ -120,5 +120,62 @@
     nickEl.value = localStorage.getItem('ft_nick') || '';
     loadMessages();
   </script>
+  <script type="module">
+  // Firebase import
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+  import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+  // 🔥 Firebase Config (Yahan tumhara config paste karo)
+  const firebaseConfig = {
+    apiKey: "AIzaSyB__tJ3sv3cB2N3vKHFCv8SYngJENQxwhY",
+    authDomain: "funtimechat69-39947.firebaseapp.com",
+    projectId: "funtimechat69-39947",
+    storageBucket: "funtimechat69-39947.firebasestorage.app",
+    messagingSenderId: "559638056734",
+    appId: "1:559638056734:web:9329d2b561b6fab106830f",
+    databaseURL: "https://funtimechat69-39947-default-rtdb.firebaseio.com"
+  };
+
+  // 🔥 Firebase Init
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const chatRef = ref(db, "messages");
+
+  const msgBox = document.getElementById("message");
+  const sendBtn = document.getElementById("sendBtn");
+  const chatArea = document.getElementById("messages");
+  const nickEl = document.getElementById("nickname");
+
+  // 📝 Send message
+  sendBtn.onclick = function () {
+    const text = msgBox.value.trim();
+    const nick = nickEl.value.trim() || "Anonymous";
+
+    if (text !== "") {
+      push(chatRef, {
+        name: nick,
+        msg: text,
+        time: Date.now()
+      });
+      msgBox.value = "";
+    }
+  };
+
+  // 📥 Load messages live
+  onChildAdded(chatRef, (snapshot) => {
+    const data = snapshot.val();
+    const div = document.createElement("div");
+    div.className = "message";
+    div.innerHTML = `<strong>${data.name}:</strong> ${data.msg}`;
+    chatArea.appendChild(div);
+    chatArea.scrollTop = chatArea.scrollHeight;
+  });
+
+  // 💾 Nickname save remember
+  nickEl.addEventListener("input", () => {
+    localStorage.setItem("nickname", nickEl.value);
+  });
+  nickEl.value = localStorage.getItem("nickname") || "";
+  </script>
 </body>
 </html>
