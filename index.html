@@ -30,7 +30,7 @@
     .side{width:320px;min-width:240px;display:flex;flex-direction:column;gap:10px}
 
     .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .pill{padding:8px 12px;border-radius:999px;border:1px solid #eee;background:#fff;cursor:pointer}
+    .pill{padding:8px 12px;border-radius:10px;border:1px solid #eee;background:#fff;cursor:pointer}
 
     .messages{height:420px;overflow:auto;padding:12px;border-radius:12px;border:1px solid #eef7fb;background:linear-gradient(180deg,#fbfeff,#f7fcff)}
     .msgWrap{margin-bottom:12px}
@@ -78,6 +78,20 @@
       .messages{height:320px}
       .menuPanel{left:8px;top:70px;width:90%}
     }
+
+    /* Mobile specific tweaks to ensure element sizes fit small screens */
+    @media (max-width:480px){
+      .logo{width:48px;height:48px;font-size:18px}
+      .menuBtn{width:40px;height:40px}
+      .card{padding:10px;border-radius:12px}
+      .messages{height:56vh;padding:10px}
+      .bubble{max-width:86%}
+      .sendRow{position:fixed;left:12px;right:12px;bottom:12px;background:transparent}
+      .sendRow input{padding:12px;border-radius:10px}
+      .sendRow button.primary{width:100px;padding:12px}
+      .side{display:none} /* hide side panel on very small screens to save space; use bottom nav */
+      .bottomNav{position:fixed;left:12px;right:12px;bottom:12px}
+    }
   </style>
 </head>
 <body>
@@ -85,7 +99,7 @@
     <div class="card" id="mainCard">
       <div class="top">
         <div class="leftRow">
-          <div class="menuBtn" id="menuToggle">☰</div>
+          <div class="menuBtn" id="menuToggle" title="Menu">☰</div>
           <div class="logo" id="logoText">MH</div>
           <div>
             <h1 id="siteTitle">FunTimeChat</h1>
@@ -106,16 +120,16 @@
             <div class="small">Current: <strong id="currentRoomLabel">room1 (Public)</strong></div>
           </div>
 
-          <div id="messages" class="messages"></div>
+          <div id="messages" class="messages" aria-live="polite"></div>
 
-          <div class="sendRow">
-            <input id="msgInput" type="text" placeholder="Type message and press Send..." />
+          <div class="sendRow" style="margin-top:8px">
+            <input id="msgInput" type="text" placeholder="Type message and press Send..." autocomplete="off" />
             <button id="sendBtn" class="primary">Send</button>
           </div>
           <div class="small" style="margin-top:8px">Messages saved under <code id="pathInfo">/chats/room1/messages</code></div>
         </div>
 
-        <div class="side">
+        <div class="side" id="sidePanel">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div>
               <div class="sectionTitle">Rooms</div>
@@ -162,7 +176,7 @@
   </div>
 
   <!-- Menu panel -->
-  <div id="menuPanel" class="menuPanel">
+  <div id="menuPanel" class="menuPanel" role="dialog" aria-hidden="true">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
       <div class="avatar" id="menuAvatar">MH</div>
       <div>
@@ -192,7 +206,7 @@
   </div>
 
   <!-- PM popup -->
-  <div id="pmOverlay" class="pmOverlay">
+  <div id="pmOverlay" class="pmOverlay" role="dialog" aria-hidden="true">
     <div class="pmCard">
       <div class="pmLeft">
         <div style="display:flex;align-items:center;justify-content:space-between">
@@ -244,7 +258,7 @@
   </div>
 
   <!-- Rules Modal -->
-  <div id="rulesModal" class="rulesModal">
+  <div id="rulesModal" class="rulesModal" role="dialog" aria-hidden="true">
     <div class="rulesContent">
       <h3>FunTime Chat — Community Guidelines (Please accept)</h3>
       <p>We want FunTime Chat to be friendly and fun. Soft rules (B): casual talk allowed but respectful.</p>
@@ -325,6 +339,8 @@
     const pathInfo = document.getElementById('pathInfo');
     const avatarFile = document.getElementById('avatarFile');
     const themeToggle = document.getElementById('themeToggle');
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
 
     // small helpers
     function esc(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -338,11 +354,16 @@
     let currentPmOtherUid = null;
     let currentPmChatId = null;
 
+    // Request Notification permission (for desktop/mobile browsers)
+    if("Notification" in window && Notification.permission !== "granted"){
+      Notification.requestPermission().catch(()=>{});
+    }
+
     // AUTH UI
     function renderUserUI(user){
       if(!user){
         userArea.innerHTML = `<button class="pill" id="loginBtn">Sign in with Google</button> <button class="pill" id="guestBtn">Guest</button>`;
-        document.getElementById('loginBtn').onclick = () => signInWithPopup(auth, provider);
+        document.getElementById('loginBtn').onclick = () => signInWithPopup(auth, provider).catch(e=>alert(e.message));
         document.getElementById('guestBtn').onclick = () => signInAnonymously(auth).catch(e=>alert(e.message));
         menuName.innerText = 'Guest'; menuEmail.innerText=''; menuAvatar.innerText='MH'; document.getElementById('profileInfo').innerText='Name: not signed (username cannot be changed)';
       } else {
@@ -350,7 +371,7 @@
         document.getElementById('logoutBtn').onclick = () => signOut(auth);
         menuName.innerText = user.displayName || user.email || 'User';
         menuEmail.innerText = user.email || '';
-        menuAvatar.innerText = (user.displayName||'MH').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase();
+        try{ menuAvatar.innerText = (user.displayName||'MH').split(' ').map(x=>x[0]).slice(0,2).join('').toUpperCase(); }catch(e){}
         document.getElementById('profileInfo').innerText = `Name: ${user.displayName || ''} (username cannot be changed)`;
       }
     }
@@ -383,12 +404,12 @@
     });
 
     // RULES modal
-    btnRules.onclick = ()=> show(rulesModal);
-    closeRulesBtn.onclick = ()=> hide(rulesModal);
-    acceptRules.onclick = ()=> { acceptedRules = true; hide(rulesModal); alert('Thanks — you can now chat.'); };
+    btnRules.onclick = ()=> { rulesModal.style.display='flex'; rulesModal.setAttribute('aria-hidden','false'); };
+    closeRulesBtn.onclick = ()=> { rulesModal.style.display='none'; rulesModal.setAttribute('aria-hidden','true'); };
+    acceptRules.onclick = ()=> { acceptedRules = true; rulesModal.style.display='none'; rulesModal.setAttribute('aria-hidden','true'); alert('Thanks — you can now chat.'); };
 
     // Menu toggle & theme
-    menuToggle.onclick = ()=> menuPanel.style.display = menuPanel.style.display === 'block' ? 'none' : 'block';
+    menuToggle.onclick = ()=> { menuPanel.style.display = menuPanel.style.display === 'block' ? 'none' : 'block'; menuPanel.setAttribute('aria-hidden', menuPanel.style.display === 'none'); };
     themeToggle.onclick = ()=> { const cur = document.documentElement.getAttribute('data-theme'); if(cur==='dark') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme','dark'); };
     document.body.addEventListener('click', (e)=>{ if(!menuPanel.contains(e.target) && e.target !== menuToggle) menuPanel.style.display = 'none'; });
 
@@ -397,13 +418,32 @@
       if(!currentUser) return alert('Sign in first');
       const file = e.target.files[0]; if(!file) return;
       const reader = new FileReader();
-      reader.onload = async ()=> { const dataUrl = reader.result; await set(ref(db, `users/${currentUser.uid}/avatarData`), dataUrl); alert('Profile photo uploaded.'); };
+      reader.onload = async ()=> {
+        const dataUrl = reader.result;
+        await set(ref(db, `users/${currentUser.uid}/avatarData`), dataUrl);
+        alert('Profile photo uploaded.');
+        // update menu and small avatar preview
+        try{
+          menuAvatar.innerHTML = '';
+          const im = document.createElement('img'); im.src = dataUrl; im.style.width='44px'; im.style.height='44px'; im.style.borderRadius='50%';
+          menuAvatar.appendChild(im);
+        }catch(e){}
+      };
       reader.readAsDataURL(file);
     });
 
+    // Notifications helper
+    function notify(title, body){
+      try{
+        if("Notification" in window && Notification.permission === "granted"){
+          new Notification(title, { body });
+        }
+      }catch(e){}
+    }
+
     // ROOM & PUBLIC messages
     function setRoom(roomId, metaLabel){
-      if(!acceptedRules){ show(rulesModal); return; }
+      if(!acceptedRules){ rulesModal.style.display='flex'; rulesModal.setAttribute('aria-hidden','false'); return; }
       currentRoom = roomId; currentRoomLabel.innerText = metaLabel || roomId;
       pathInfo.innerText = currentRoom.startsWith('room') ? `/chats/${currentRoom}/messages` : `/rooms/${currentRoom}/messages`;
       messagesEl.innerHTML = '';
@@ -411,8 +451,9 @@
       onChildAdded(node, snap=> {
         const m = snap.val(); if(!m) return;
         const key = snap.key;
-        if(currentUser && m.uid){ get(ref(db, `blocks/${currentUser.uid}/${m.uid}`)).then(bsnap=>{ if(bsnap.exists() && bsnap.val()===true) return; appendMessageToUI(m,key); }); }
-        else appendMessageToUI(m,key);
+        if(currentUser && m.uid){
+          get(ref(db, `blocks/${currentUser.uid}/${m.uid}`)).then(bsnap=>{ if(bsnap.exists() && bsnap.val()===true) return; appendMessageToUI(m,key); });
+        } else appendMessageToUI(m,key);
       });
     }
 
@@ -424,12 +465,19 @@
       // online dot
       get(ref(db, `status/${m.uid}`)).then(ss=>{ if(ss.exists() && ss.val().state==='online'){ const dot=document.createElement('span'); dot.className='onlineDot'; meta.appendChild(dot); } });
       const bubble = document.createElement('div'); bubble.className='bubble' + ((currentUser && m.uid===currentUser.uid)?' me':''); bubble.innerText = m.text || '';
-      if(currentUser && m.uid===currentUser.uid){ const dBtn=document.createElement('button'); dBtn.className='delBtn'; dBtn.innerText='Delete'; dBtn.onclick = async ()=>{ if(!confirm('Delete your message?')) return; await remove(ref(db, `${currentRoom.startsWith('room')?`chats/${currentRoom}/messages/${key}`:`rooms/${currentRoom}/messages/${key}`}`)); wrap.remove(); }; meta.appendChild(dBtn); }
-      wrap.appendChild(meta); wrap.appendChild(bubble); messagesEl.appendChild(wrap); messagesEl.scrollTop = messagesEl.scrollHeight; notifySound.play().catch(()=>{});
+      if(currentUser && m.uid===currentUser.uid){
+        const dBtn=document.createElement('button'); dBtn.className='delBtn'; dBtn.innerText='Delete';
+        dBtn.onclick = async ()=>{ if(!confirm('Delete your message?')) return; await remove(ref(db, `${currentRoom.startsWith('room')?`chats/${currentRoom}/messages/${key}`:`rooms/${currentRoom}/messages/${key}`}`)); wrap.remove(); };
+        meta.appendChild(dBtn);
+      }
+      wrap.appendChild(meta); wrap.appendChild(bubble); messagesEl.appendChild(wrap); messagesEl.scrollTop = messagesEl.scrollHeight;
+      notifySound.play().catch(()=>{});
+      // browser notification if not visible
+      if(document.hidden) notify('New message', (m.name||'Anon') + ': ' + (m.text||''));
     }
 
     // send message
-    sendBtn.onclick = async ()=>{ const txt=msgInput.value.trim(); if(!txt) return; if(!currentUser) return alert('Sign in first'); const path = currentRoom.startsWith('room') ? `chats/${currentRoom}/messages` : `rooms/${currentRoom}/messages`; const p = push(ref(db, path)); await set(p, { uid: currentUser.uid, name: currentUser.displayName || currentUser.email, text: txt, ts: serverTimestamp() }); msgInput.value=''; };
+    sendBtn.onclick = async ()=>{ const txt=msgInput.value.trim(); if(!txt) return; if(!currentUser) return alert('Sign in first'); const path = currentRoom.startsWith('room') ? `chats/${currentRoom}/messages` : `rooms/${currentRoom}/messages`; const p = push(ref(db, path)); await set(p, { uid: currentUser.uid, name: currentUser.displayName || currentUser.email || 'Guest', text: txt, ts: serverTimestamp() }); msgInput.value=''; };
     msgInput.addEventListener('keydown', e=>{ if(e.key==='Enter') sendBtn.click(); });
 
     // ensure welcome
@@ -463,6 +511,7 @@
         const ids=[currentUser.uid, uid].sort();
         currentPmChatId = `pm_${ids[0]}_${ids[1]}`;
         pmOverlay.style.display='flex';
+        pmOverlay.setAttribute('aria-hidden','false');
         pmTitle.innerText = `Chat with ${userObj.name||uid}`;
         pmName.innerText = userObj.name||uid;
         pmEmail.innerText = userObj.email||'';
@@ -482,7 +531,7 @@
 
     pmSend.onclick = async ()=>{ if(!currentUser) return alert('Sign in first'); if(!currentPmChatId) return alert('Open PM first'); const t=pmInput.value.trim(); if(!t) return; const p=push(ref(db, `private/${currentPmChatId}/messages`)); await set(p, { uid:currentUser.uid, name:currentUser.displayName || currentUser.email, text:t, ts:serverTimestamp() }); pmInput.value=''; };
 
-    pmClose.onclick = ()=>{ pmOverlay.style.display='none'; currentPmChatId=null; currentPmOtherUid=null; pmMessages.innerHTML=''; stopCall(); };
+    pmClose.onclick = ()=>{ pmOverlay.style.display='none'; pmOverlay.setAttribute('aria-hidden','true'); currentPmChatId=null; currentPmOtherUid=null; pmMessages.innerHTML=''; stopCall(); };
 
     pmAddFriend.onclick = async ()=>{ if(!currentUser||!currentPmOtherUid) return alert('Sign in and open PM'); await set(ref(db, `friendRequests/${currentPmOtherUid}/${currentUser.uid}`), { from: currentUser.uid, ts: serverTimestamp() }); alert('Friend request sent'); };
 
@@ -526,8 +575,14 @@
     // initial load
     loadRooms(); loadUsers();
 
-    // console helper to set roles (run in browser console)
+    // helper: set role (owner/vip/admin) - owner should run this from console or admin UI (we left console helper)
     window.setRole = async (uid,role)=>{ await set(ref(db, `roles/${uid}`), role); alert('Role set'); };
+
+    // small UI focus improvements
+    msgInput.addEventListener('focus', ()=> { if(window.innerWidth <= 480) window.scrollTo(0, document.body.scrollHeight); });
+
+    // accessibility: keyboard support for closing pm and menus
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ if(pmOverlay.style.display==='flex') pmClose.click(); menuPanel.style.display='none'; } });
 
     console.log('FunTimeChat final script loaded');
   </script>
