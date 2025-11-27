@@ -4,32 +4,46 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>FunTime Chat</title>
+
   <style>
-    :root{--bg1:#73d0ff;--bg2:#09a8ff;--card:#ffffff;--accent:#0099ee}
+    :root{--bg1:#73d0ff;--bg2:#09a8ff;--card:#ffffff}
     body{
-      margin:0; font-family:Arial, Helvetica, sans-serif;
-      background: linear-gradient(180deg,var(--bg1),var(--bg2));
-      min-height:100vh; display:flex; justify-content:center; align-items:flex-start;
-      padding:30px 12px;
+      margin:0;background:linear-gradient(180deg,var(--bg1),var(--bg2));
+      font-family:Arial,Helvetica,sans-serif;
+      min-height:100vh;display:flex;justify-content:center;padding:30px 12px;
     }
-    .card{width:100%;max-width:420px;background:var(--card);border-radius:14px;padding:18px;box-shadow:0 6px 20px rgba(0,0,0,0.12)}
+    .card{width:100%;max-width:420px;background:#fff;border-radius:15px;padding:18px;box-shadow:0 6px 20px rgba(0,0,0,0.12)}
     .header{display:flex;gap:12px;align-items:center;margin-bottom:10px}
-    .logo{width:64px;height:64px;border-radius:12px;background:linear-gradient(180deg,#bfeaff,#4fc3ff);display:flex;align-items:center;justify-content:center;font-weight:800;color:#00324d;font-size:28px}
-    h1{margin:0;font-size:22px;color:#044;}
-    label{display:block;color:#0a6;padding-top:8px;font-weight:600}
-    input[type=text]{width:100%;padding:10px;border-radius:8px;border:1px solid #ddd;margin-top:8px;box-sizing:border-box}
+    .logo{width:64px;height:64px;border-radius:12px;background:linear-gradient(180deg,#c3eaff,#52c5ff);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:28px;color:#003b53}
+    h1{margin:0;font-size:22px;color:#033}
+    label{display:block;margin-top:10px;font-weight:600;color:#055}
+    input[type=text]{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box}
     .row{display:flex;gap:10px;margin-top:12px}
     .btn{flex:1;padding:11px;border-radius:10px;background:#fff;border:1px solid #dcdcdc;cursor:pointer;font-weight:700}
     .btn-primary{background:linear-gradient(90deg,var(--bg1),var(--bg2));color:#fff;border:none;box-shadow:0 6px 12px rgba(9,148,255,0.18)}
     .chatbox{height:360px;background:#f8fbff;border-radius:10px;margin-top:14px;padding:12px;overflow:auto;border:1px solid #eee}
     .msg{padding:8px 10px;border-radius:8px;margin-bottom:8px;background:#fff;box-shadow:0 1px 0 rgba(0,0,0,0.03)}
-    .small{font-size:12px;color:#666;margin-top:8px}
+
+    /* Terms Popup */
+    .rulesBox{
+      position:fixed;inset:0;background:rgba(0,0,0,0.55);display:none;
+      justify-content:center;align-items:center;padding:20px;
+    }
+    .rulesCard{
+      background:#fff;width:100%;max-width:450px;border-radius:14px;
+      padding:18px;max-height:90vh;overflow:auto;
+    }
+    .rulesCard h2{margin-top:0;text-align:center;color:#044}
+    .rulesCard ul{padding-left:20px;line-height:1.5;color:#333}
+    .closeBtn{padding:10px;width:100%;border-radius:10px;margin-top:15px;background:#ff4444;color:#fff;font-weight:700;border:none;cursor:pointer}
+    .rulesBtn{margin-top:14px;text-align:center;color:#0058a2;font-weight:700;cursor:pointer}
   </style>
 </head>
+
 <body>
   <div class="card">
     <div class="header">
-      <div class="logo" id="logo">FT</div>
+      <div class="logo">FT</div>
       <div>
         <h1>FunTime Chat</h1>
         <div style="color:#666;font-size:13px">Public Chat · Live</div>
@@ -50,10 +64,27 @@
       <input id="msg" type="text" placeholder="Type message" style="flex:1;padding:10px;border-radius:8px;border:1px solid #ddd">
       <button id="send" class="btn btn-primary" style="width:110px">Send</button>
     </div>
+
+    <div class="rulesBtn" id="rulesOpen">📌 नियम और शर्तें (Rules & Policy)</div>
+  </div>
+
+  <!-- Rules Popup -->
+  <div class="rulesBox" id="rulesBox">
+    <div class="rulesCard">
+      <h2>FunTime Chat – नियम और शर्तें</h2>
+      <ul>
+        <li>किसी भी यूज़र को गाली देना / अपमान करना मना है।</li>
+        <li>धर्म, राजनीति, जाति पर भड़काऊ बातें मना हैं।</li>
+        <li>एडल्ट / 18+ फोटो, वीडियो या बातें बिल्कुल मना हैं।</li>
+        <li>फ़ोन नंबर, लोकेशन, OTP, बैंक डिटेल शेयर ना करें।</li>
+        <li>किसी भी तरह की स्पैमिंग या विज्ञापन पोस्ट नहीं करें।</li>
+        <li>नियम का पालन न करने पर अकाउंट ब्लॉक या रिपोर्ट किया जा सकता है।</li>
+      </ul>
+      <button class="closeBtn" id="rulesClose">Close</button>
+    </div>
   </div>
 
   <script type="module">
-    // Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
@@ -61,7 +92,7 @@
       apiKey: "AIzaSyB__tJ3sv3cB2N3vKHFCv8SYngJENQxwhY",
       authDomain: "funtimechat69-39947.firebaseapp.com",
       projectId: "funtimechat69-39947",
-      storageBucket: "funtimechat69-39947.firebasestorage.app",
+      storageBucket: "funtimechat69-39947.appspot.com",
       messagingSenderId: "559638056734",
       appId: "1:559638056734:web:9329d2b561b6fab106830f",
       databaseURL: "https://funtimechat69-39947-default-rtdb.firebaseio.com"
@@ -69,41 +100,43 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const chatRef = ref(db, "messages");
+    const chatRef = ref(db,"messages");
 
     const nickEl = document.getElementById("nick");
     const msgEl = document.getElementById("msg");
     const chatEl = document.getElementById("chat");
-    const sendBtn = document.getElementById("send");
-    const joinBtn = document.getElementById("joinBtn");
-    const clearBtn = document.getElementById("clearBtn");
 
-    // Save nickname
-    joinBtn.onclick = ()=>{ localStorage.setItem("nickname", nickEl.value.trim()); alert("Saved!"); };
-    clearBtn.onclick = ()=>{ localStorage.removeItem("nickname"); nickEl.value=""; };
-
+    document.getElementById("joinBtn").onclick = ()=>{
+      const n = nickEl.value.trim();
+      if(n){ localStorage.setItem("nickname",n); alert("Nickname saved!"); }
+    };
+    document.getElementById("clearBtn").onclick = ()=>{
+      localStorage.removeItem("nickname"); nickEl.value = "";
+    };
     nickEl.value = localStorage.getItem("nickname") || "";
 
-    // Send Message
-    sendBtn.onclick = ()=>{
+    document.getElementById("send").onclick = ()=>{
       const text = msgEl.value.trim();
       const nick = nickEl.value.trim() || "Guest";
       if(text){
-        push(chatRef,{ name:nick, msg:text, time:Date.now() });
+        push(chatRef,{name:nick,msg:text,time:Date.now()});
         msgEl.value = "";
       }
     };
-    msgEl.addEventListener("keydown", e=>{ if(e.key==="Enter") sendBtn.click(); });
+    msgEl.addEventListener("keydown", e=>{ if(e.key==="Enter") document.getElementById("send").click(); });
 
-    // Load messages live
     onChildAdded(chatRef,(snap)=>{
       const d = snap.val();
       const div = document.createElement("div");
-      div.className="msg";
+      div.className = "msg";
       div.innerHTML = `<strong>${d.name}:</strong> ${d.msg}`;
       chatEl.appendChild(div);
       chatEl.scrollTop = chatEl.scrollHeight;
     });
+
+    // Rules popup
+    document.getElementById("rulesOpen").onclick = ()=> document.getElementById("rulesBox").style.display="flex";
+    document.getElementById("rulesClose").onclick = ()=> document.getElementById("rulesBox").style.display="none";
   </script>
 </body>
-      </html>
+</html>
