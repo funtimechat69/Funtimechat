@@ -1,150 +1,170 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>FunTimeChat</title>
+<title>MH Chat – Planfun</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
 <style>
-body{margin:0;font-family:Arial;background:#0f172a;color:#fff}
-.hidden{display:none}
-.header{background:#020617;padding:12px;text-align:center;font-weight:bold}
-#messages{height:70vh;overflow:auto;padding:10px}
-.msg{background:#1e293b;padding:8px;border-radius:8px;margin:5px 0;max-width:80%}
-.me{margin-left:auto;background:#2563eb}
-.sendBar{display:flex;position:fixed;bottom:55px;width:100%;background:#020617;padding:8px}
-.sendBar input{flex:1;padding:10px;border-radius:8px;border:none}
-.sendBar button{margin-left:6px;padding:10px;border:none;border-radius:8px;background:#22c55e}
-.bottomNav{position:fixed;bottom:0;width:100%;background:#020617;display:flex;justify-content:space-around;padding:10px 0}
-.navBtn{font-size:13px}
-.loginBox{padding:20px;margin-top:80px}
-.btn{width:100%;padding:12px;margin:10px 0;border:none;border-radius:8px;background:#2563eb;color:white;font-size:16px}
-.roomBtn{padding:6px;margin:4px;background:#1e293b;border-radius:6px;display:block}
+*{margin:0;padding:0;box-sizing:border-box;font-family:Poppins;}
+body{background:#f2faff;color:#333}
+
+/* ===== LOADER ===== */
+#loader{
+position:fixed;top:0;left:0;width:100%;height:100%;
+background:linear-gradient(135deg,#00c6ff,#0072ff);
+display:flex;align-items:center;justify-content:center;
+flex-direction:column;color:#fff;z-index:9999;
+}
+#loader h1{font-size:48px;letter-spacing:3px}
+
+/* ===== AUTH ===== */
+#authScreen{text-align:center;padding:20px;display:none}
+.btn{width:100%;padding:14px;margin:8px 0;border:none;
+background:#00aaff;color:white;font-size:16px;border-radius:0}
+
+/* ===== MAIN APP ===== */
+#app{display:none;height:100vh;flex-direction:column}
+.topbar{background:#00aaff;color:white;padding:15px}
+.content{flex:1;overflow:auto;padding:10px}
+.section{background:white;margin-bottom:10px;padding:10px;border-radius:6px}
+.section h3{color:#00aaff;margin-bottom:6px}
+.bottom-nav{display:flex;border-top:1px solid #ccc}
+.bottom-nav div{flex:1;text-align:center;padding:12px}
 </style>
 </head>
 
 <body>
 
-<!-- LOGIN -->
-<div id="authScreen">
-  <div class="header">FunTimeChat Login</div>
-  <div class="loginBox">
-    <button class="btn" id="googleLogin">Login with Google</button>
-    <button class="btn" id="guestLogin">Continue as Guest</button>
-  </div>
+<!-- ================= LOADING SCREEN ================= -->
+<div id="loader">
+<h1>MH</h1>
+<p>Loading Planfun...</p>
 </div>
 
-<!-- CHAT -->
-<div id="chatScreen" class="hidden">
-  <div class="header" id="roomTitle">Public Room</div>
-
-  <div id="messages"></div>
-
-  <div class="sendBar">
-    <input id="msgInput" placeholder="Type message...">
-    <button id="sendBtn">Send</button>
-  </div>
-
-  <div class="bottomNav">
-    <div class="navBtn" onclick="showRooms()">Rooms</div>
-    <div class="navBtn" onclick="startRandom()">Random</div>
-    <div class="navBtn">Inbox</div>
-    <div class="navBtn" onclick="logout()">Logout</div>
-  </div>
+<!-- ================= 1. ACCOUNT SYSTEM ================= -->
+<div id="authScreen" class="section">
+<h3>1. Account System</h3>
+<button class="btn">Login with Email</button>
+<button class="btn">Google Login</button>
+<button class="btn">Guest Login</button>
 </div>
 
-<!-- ROOMS -->
-<div id="roomScreen" class="hidden">
-  <div class="header">Rooms</div>
-  <div id="roomList"></div>
-  <center><button class="btn" onclick="backToChat()">Back</button></center>
+<!-- ================= MAIN APP ================= -->
+<div id="app">
+
+<div class="topbar">MH Chat – Planfun</div>
+
+<div class="content">
+
+<!-- ================= 2. DESIGN & UI ================= -->
+<div class="section">
+<h3>2. Design & UI</h3>
+<p>Theme: White + Sky Blue, Square Buttons, App Style Layout</p>
 </div>
 
+<!-- ================= 3. PUBLIC CHAT ================= -->
+<div class="section" id="publicChat">
+<h3>3. Public Chat</h3>
+<div id="publicMessages"></div>
+<input type="text" placeholder="Type public message...">
+</div>
+
+<!-- ================= 4. PRIVATE CHAT ================= -->
+<div class="section" id="privateChat">
+<h3>4. Private Chat (Inbox Style)</h3>
+<div id="pmList"></div>
+</div>
+
+<!-- ================= 5. RANDOM CHAT ================= -->
+<div class="section" id="randomChat">
+<h3>5. Random Chat</h3>
+<button class="btn">Start Random Chat</button>
+<button class="btn">Next</button>
+</div>
+
+<!-- ================= 6. AUDIO / VIDEO CALL ================= -->
+<div class="section">
+<h3>6. Audio / Video Call</h3>
+<button class="btn">Audio Call</button>
+<button class="btn">Video Call</button>
+</div>
+
+<!-- ================= 7. FRIENDS SYSTEM ================= -->
+<div class="section">
+<h3>7. Friends System</h3>
+<button class="btn">Send Friend Request</button>
+<button class="btn">Friends List</button>
+</div>
+
+<!-- ================= 8. SAFETY & CONTROL ================= -->
+<div class="section">
+<h3>8. Safety & Control</h3>
+<button class="btn">Block</button>
+<button class="btn">Report</button>
+<button class="btn">Clear Chat</button>
+</div>
+
+<!-- ================= 9. ADMIN PANEL ================= -->
+<div class="section">
+<h3>9. Admin Panel</h3>
+<button class="btn">Ban User</button>
+<button class="btn">Delete Message</button>
+<button class="btn">Create Room</button>
+</div>
+
+<!-- ================= 10. DATABASE (FIREBASE) ================= -->
+<div class="section">
+<h3>10. Database (Firebase)</h3>
+<p>Realtime DB + Storage + Auth Ready</p>
+</div>
+
+<!-- ================= 11. NOTIFICATION & SOUND ================= -->
+<div class="section">
+<h3>11. Notification & Sound</h3>
+<p>Message Sound, Call Ringtone, Browser Notification</p>
+</div>
+
+<!-- ================= 12. LEGAL PAGES ================= -->
+<div class="section">
+<h3>12. Legal Pages</h3>
+<p>Privacy Policy | Terms | Report Abuse | DMCA</p>
+</div>
+
+</div>
+
+<div class="bottom-nav">
+<div>Chat</div>
+<div>Random</div>
+<div>Friends</div>
+<div>Profile</div>
+</div>
+
+</div>
+
+<!-- ================= FIREBASE CONFIG ================= -->
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
-import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
-/* ✅ YOUR FIREBASE CONFIG SET */
 const firebaseConfig = {
-  apiKey: "AIzaSyB__tJ3sv3cB2N3vKHFCv8SYngJENQxwhY",
-  authDomain: "funtimechat69-39947.firebaseapp.com",
-  databaseURL: "https://funtimechat69-39947-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "funtimechat69-39947",
-  storageBucket: "funtimechat69-39947.firebasestorage.app",
-  messagingSenderId: "559638056734",
-  appId: "1:559638056734:web:9329d2b561b6fab106830f"
+apiKey: "PASTE_HERE",
+authDomain: "PASTE_HERE",
+databaseURL: "PASTE_HERE",
+projectId: "PASTE_HERE",
+storageBucket: "PASTE_HERE",
+messagingSenderId: "PASTE_HERE",
+appId: "PASTE_HERE"
 };
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getDatabase(app);
 
-const authScreen = document.getElementById("authScreen");
-const chatScreen = document.getElementById("chatScreen");
-const roomScreen = document.getElementById("roomScreen");
-const messages = document.getElementById("messages");
-const msgInput = document.getElementById("msgInput");
-
-document.getElementById("googleLogin").onclick = ()=>{
-  const provider = new GoogleAuthProvider();
-  signInWithPopup(auth, provider);
-};
-
-document.getElementById("guestLogin").onclick = ()=>{
-  signInAnonymously(auth);
-};
-
-onAuthStateChanged(auth,user=>{
-  if(user){
-    authScreen.classList.add("hidden");
-    chatScreen.classList.remove("hidden");
-    loadMessages();
-  }
-});
-
-function loadMessages(){
-  const r = ref(db,"publicRoom");
-  onChildAdded(r,snap=>{
-    const m = snap.val();
-    const div = document.createElement("div");
-    div.className="msg";
-    if(m.uid===auth.currentUser.uid) div.classList.add("me");
-    div.innerText = m.name+": "+m.text;
-    messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
-  });
-}
-
-document.getElementById("sendBtn").onclick=()=>{
-  if(!msgInput.value.trim()) return;
-  push(ref(db,"publicRoom"),{
-    text:msgInput.value,
-    name:auth.currentUser.displayName||"Guest",
-    uid:auth.currentUser.uid,
-    time:Date.now()
-  });
-  msgInput.value="";
-};
-
-window.showRooms=()=>{
-  chatScreen.classList.add("hidden");
-  roomScreen.classList.remove("hidden");
-};
-
-window.backToChat=()=>{
-  roomScreen.classList.add("hidden");
-  chatScreen.classList.remove("hidden");
-};
-
-window.logout=()=>{
-  signOut(auth);
-  location.reload();
-};
-
-window.startRandom=()=>{
-  alert("Random Chat Part-3 me active hoga ✅");
-};
+// AUTO LOADER
+setTimeout(()=>{
+document.getElementById("loader").style.display="none";
+document.getElementById("authScreen").style.display="block";
+},2000);
 </script>
 
 </body>
