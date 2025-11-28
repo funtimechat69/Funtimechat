@@ -55,7 +55,21 @@
                 </div>
             </div>
 
-            <div id="inbox-view" class="view" style="display:none;"><h2>Private Messages (Inbox)</h2><p>Feature implementation pending...</p></div>
+            <div id="inbox-view" class="view" style="display:none;">
+                <button id="back-to-inbox-list" class="square-btn type-b" style="display:none; width:auto; margin-bottom: 10px;">← Back to Inbox</button>
+                <h2 id="inbox-title">Private Messages (Inbox)</h2>
+                <div id="chat-list-container" class="message-list-area">
+                    <p>Loading your private chats...</p>
+                </div>
+                <div id="private-chat-room" style="display:none; height:100%; display:flex; flex-direction:column;">
+                    <div id="private-messages-container" class="message-list-area" style="flex-grow:1; height: auto;"></div>
+                    <div class="input-area">
+                        <input type="text" id="private-message-input" placeholder="Type private message...">
+                        <button id="private-send-message-btn" class="square-btn type-b">➡️</button>
+                    </div>
+                </div>
+            </div>
+
             <div id="random-chat-view" class="view" style="display:none;">
                 <h2>Random Chat</h2>
                 <p>Click 'Start Match' to find a stranger!</p>
@@ -101,7 +115,7 @@
             appId: "1:559638056734:web:9329d2b561b6fab106830f"
         };
 
-        // 🚨 STEP 2: Necessary Firebase SDK Imports (ADDED 'remove' for Random Chat)
+        // 🚨 STEP 2: Necessary Firebase SDK Imports 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { 
             getAuth, signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, 
@@ -109,7 +123,7 @@
             signOut, signInAnonymously, updateProfile 
         } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
         import { 
-            getDatabase, ref, push, onValue, serverTimestamp, query, limitToLast, set, remove, off
+            getDatabase, ref, push, onValue, serverTimestamp, query, limitToLast, set, remove, off, get // 'get' added for fetching latest message/participant info
         } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
         // Initialize Firebase Services
@@ -152,6 +166,9 @@
                 if(document.getElementById('public-chat-view').style.display === 'none' && document.getElementById('auth-view').style.display === 'block') {
                     handleNavigation('public-chat-view');
                 }
+                
+                // NEW: Load Private Chat List when logged in
+                loadChatList();
             } else {
                 // LOGGED OUT
                 document.getElementById('auth-view').style.display = 'block';
@@ -242,16 +259,59 @@
         const recentMessagesQuery = query(messagesRef, limitToLast(100)); 
 
         // 💡 FUNCTION: मैसेज को पढ़ने (Seen) के रूप में चिह्नित करना
-        const updateMessageSeenStatus = (messageKey) => {
+        const updateMessageSeenStatus = (messageKey, roomType, chatID) => {
             const currentUser = auth.currentUser;
             if (!currentUser) return;
 
-            const messageReadRef = ref(db, `public_rooms/global/messages/${messageKey}/reads/${currentUser.uid}`);
-            set(messageReadRef, true)
+            const path = roomType === 'public' 
+                ? `public_rooms/global/messages/${messageKey}/reads/${currentUser.uid}`
+                : `private_chats/${chatID}/messages/${messageKey}/reads/${currentUser.uid}`;
+                
+            set(ref(db, path), true)
                 .catch(error => console.error("Error setting seen status:", error));
         };
+        
+        // Helper function to render messages (used by both Public and Private Chat)
+        const renderMessage = (message, key, roomType, chatID, container) => {
+            const currentUserUid = auth.currentUser?.uid;
+            
+            // --- SEEN LOGIC CALCULATION (Simplified for clarity) ---
+            const reads = message.reads || {};
+            const allUids = Object.keys(reads);
+            
+            let seenStatus = 'delivered'; 
+            let seenCount = allUids.length - 1; 
 
-        // Sending Message Logic
+            if (message.uid === currentUserUid) {
+                if (seenCount >= 1) {
+                    seenStatus = 'seen'; 
+                } 
+            } else {
+                seenStatus = 'received';
+                if (!reads[currentUserUid]) {
+                    setTimeout(() => updateMessageSeenStatus(key, roomType, chatID), 500);
+                }
+            }
+            // ----------------------------------------------------
+
+            const messageElement = document.createElement('div');
+            messageElement.className = `message-card ${seenStatus}`; 
+            messageElement.innerHTML = `
+                <div class="message-header">
+                    <span class="user-name">${message.displayName || 'Anonymous'}</span>
+                    <span class="timestamp">${new Date(message.timestamp).toLocaleTimeString()}</span>
+                </div>
+                <p class="message-text">${message.text}</p>
+                <div class="message-status-ticks">
+                    ${message.uid === currentUserUid ? (seenStatus === 'seen' ? '✔️✔️' : '✔️') : ''}
+                </div>
+            `;
+            messageElement.dataset.key = key; 
+            container.appendChild(messageElement);
+        };
+
+
+        // Sending Message Logic (Public Chat)
         sendMessageBtn.addEventListener('click', async () => {
             const messageText = messageInput.value.trim();
             const currentUser = auth.currentUser;
@@ -276,94 +336,195 @@
             }
         });
 
-        // Receiving Messages Logic (Real-time updates + Seen Status)
+        // Receiving Messages Logic (Public Chat)
         onValue(recentMessagesQuery, (snapshot) => {
             messagesContainer.innerHTML = ''; 
-            const currentUserUid = auth.currentUser?.uid;
-
             snapshot.forEach((childSnapshot) => {
-                const message = childSnapshot.val();
-                const key = childSnapshot.key;
-                
-                // --- SEEN LOGIC CALCULATION ---
-                const reads = message.reads || {};
-                const allUids = Object.keys(reads);
-                
-                let seenStatus = 'delivered'; 
-                let seenCount = allUids.length - 1; 
-
-                if (message.uid === currentUserUid) {
-                    // Sender's view
-                    if (seenCount >= 1) {
-                        seenStatus = 'seen'; 
-                    } 
-                } else {
-                    // Receiver's view
-                    seenStatus = 'received';
-                    
-                    if (!reads[currentUserUid]) {
-                        // Mark as read after a short delay
-                        setTimeout(() => updateMessageSeenStatus(key), 500);
-                    }
-                }
-                // ------------------------------
-
-                const messageElement = document.createElement('div');
-                messageElement.className = `message-card ${seenStatus}`; 
-                messageElement.innerHTML = `
-                    <div class="message-header">
-                        <span class="user-name">${message.displayName || 'Anonymous'}</span>
-                        <span class="timestamp">${new Date(message.timestamp).toLocaleTimeString()}</span>
-                    </div>
-                    <p class="message-text">${message.text}</p>
-                    <div class="message-status-ticks">
-                        ${message.uid === currentUserUid ? (seenStatus === 'seen' ? '✔️✔️' : '✔️') : ''}
-                    </div>
-                `;
-                messageElement.dataset.key = key; 
-                messagesContainer.appendChild(messageElement);
+                renderMessage(childSnapshot.val(), childSnapshot.key, 'public', null, messagesContainer);
             });
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         });
         
         // ***************************************************************
+        // 4. PRIVATE CHAT (INBOX) SYSTEM (NEW ACTIVE LOGIC)
+        // ***************************************************************
+        
+        const chatListContainer = document.getElementById('chat-list-container');
+        const privateMessagesContainer = document.getElementById('private-messages-container');
+        const privateMessageInput = document.getElementById('private-message-input');
+        const privateSendMessageBtn = document.getElementById('private-send-message-btn');
+        const backToInboxBtn = document.getElementById('back-to-inbox-list');
+        const privateChatRoom = document.getElementById('private-chat-room');
+        
+        let currentChatID = null; // Stores the ID of the currently open private chat
+        let privateMessageListener = null; // Stores the active listener for the private chat room
+
+        // 💡 FUNCTION: Private Chat List को लोड करना
+        const loadChatList = () => {
+            if (!auth.currentUser) return;
+            const chatsRef = ref(db, 'private_chats');
+
+            // List of all private chats
+            onValue(chatsRef, async (snapshot) => {
+                chatListContainer.innerHTML = '';
+                let hasChats = false;
+
+                snapshot.forEach(async (childSnapshot) => {
+                    const chat = childSnapshot.val();
+                    const chatID = childSnapshot.key;
+                    
+                    // Filter: Only show chats where the current user is a participant
+                    if (chat.participants && chat.participants[auth.currentUser.uid]) {
+                        hasChats = true;
+                        
+                        // Determine the name of the conversation partner
+                        const otherUid = Object.keys(chat.participants).find(uid => uid !== auth.currentUser.uid);
+                        const otherDisplayName = chat.participants[otherUid]?.displayName || 'Stranger';
+                        
+                        // Fetch the last message for display
+                        const lastMessageSnapshot = await get(query(ref(db, `private_chats/${chatID}/messages`), limitToLast(1)));
+                        let lastMessageText = 'Start chatting!';
+                        
+                        lastMessageSnapshot.forEach(msgSnap => {
+                            lastMessageText = msgSnap.val().text;
+                        });
+
+                        const chatItem = document.createElement('div');
+                        chatItem.className = 'chat-list-item'; // You might need CSS for this class
+                        chatItem.dataset.chatID = chatID;
+                        chatItem.dataset.otherName = otherDisplayName;
+                        chatItem.innerHTML = `
+                            <h3>${otherDisplayName}</h3>
+                            <p>${lastMessageText.substring(0, 30)}...</p>
+                            <span class="chat-time">${new Date(chat.createdAt).toLocaleDateString()}</span>
+                        `;
+                        
+                        // Add click handler to open the specific chat
+                        chatItem.addEventListener('click', () => openPrivateChat(chatID, otherDisplayName));
+                        
+                        chatListContainer.appendChild(chatItem);
+                    }
+                });
+                
+                if (!hasChats) {
+                    chatListContainer.innerHTML = '<p>Your inbox is empty. Try starting a Random Chat!</p>';
+                }
+            });
+        };
+
+        // 💡 FUNCTION: एक प्राइवेट चैट रूम खोलना
+        const openPrivateChat = (chatID, otherName) => {
+            currentChatID = chatID;
+            
+            // UI Switch: Hide list, show room
+            document.getElementById('inbox-title').textContent = `Chatting with ${otherName}`;
+            chatListContainer.style.display = 'none';
+            privateChatRoom.style.display = 'flex';
+            backToInboxBtn.style.display = 'block';
+            
+            privateMessagesContainer.innerHTML = ''; // Clear previous messages
+            
+            // Remove previous listener if active
+            if (privateMessageListener) {
+                off(privateMessageListener);
+            }
+
+            // Start new listener for the specific chat room
+            const messagesRef = ref(db, `private_chats/${chatID}/messages`);
+            const recentMessagesQuery = query(messagesRef, limitToLast(100)); 
+
+            privateMessageListener = onValue(recentMessagesQuery, (snapshot) => {
+                privateMessagesContainer.innerHTML = '';
+                snapshot.forEach((childSnapshot) => {
+                    renderMessage(childSnapshot.val(), childSnapshot.key, 'private', chatID, privateMessagesContainer);
+                });
+                privateMessagesContainer.scrollTop = privateMessagesContainer.scrollHeight;
+            });
+        };
+
+        // 💡 EVENT: प्राइवेट मैसेज भेजना
+        privateSendMessageBtn.addEventListener('click', async () => {
+            const messageText = privateMessageInput.value.trim();
+            const currentUser = auth.currentUser;
+
+            if (messageText && currentUser && currentChatID) {
+                const messagesRef = ref(db, `private_chats/${currentChatID}/messages`);
+                const initialReads = {};
+                initialReads[currentUser.uid] = true; 
+
+                try {
+                    await push(messagesRef, {
+                        uid: currentUser.uid,
+                        displayName: currentUser.displayName || 'User',
+                        text: messageText,
+                        timestamp: serverTimestamp(),
+                        reads: initialReads, 
+                    });
+                    privateMessageInput.value = ''; 
+                    document.getElementById('new-message-sound').play(); 
+                } catch (e) {
+                    console.error("Error sending private message: ", e);
+                }
+            }
+        });
+
+        // 💡 EVENT: Inbox List पर वापस जाना
+        backToInboxBtn.addEventListener('click', () => {
+            currentChatID = null;
+            if (privateMessageListener) {
+                off(privateMessageListener); // Stop listening to the private room
+            }
+            
+            // UI Switch: Hide room, show list
+            document.getElementById('inbox-title').textContent = 'Private Messages (Inbox)';
+            chatListContainer.style.display = 'block';
+            privateChatRoom.style.display = 'none';
+            backToInboxBtn.style.display = 'none';
+        });
+
+        // ***************************************************************
         // 5. RANDOM CHAT SYSTEM (ACTIVE LOGIC)
         // ***************************************************************
+        // (This section is copied from the previous successful code)
 
         const randomChatBtn = document.querySelector('#bottom-nav button[data-view="random-chat-view"]');
         const randomChatView = document.getElementById('random-chat-view');
-        let currentMatchListener = null; // To hold the listener for the current user's match
+        let currentMatchListener = null; 
 
-        // 💡 NEW FUNCTION: नया प्राइवेट चैट रूम बनाना
+        // 💡 FUNCTION: नया प्राइवेट चैट रूम बनाना
         const createNewRandomChat = (user1Uid, user2Uid) => {
-            // चैट ID बनाने के लिए दोनों UIDs को सॉर्ट करके जोड़ें
             const chatID = [user1Uid, user2Uid].sort().join('_');
             const chatRef = ref(db, `private_chats/${chatID}`);
-
-            // चैट मेटाडेटा को डेटाबेस में सेव करें
-            set(chatRef, {
-                participants: {
-                    [user1Uid]: { displayName: auth.currentUser.displayName || 'User' },
-                    [user2Uid]: { displayName: 'Stranger' } 
-                },
-                status: 'active',
-                createdAt: serverTimestamp()
-            })
-            .then(() => {
-                alert(`Match Found! Chat ID: ${chatID}. (Next step: implement Private Chat View)`);
-                // Match Found होने पर, Random View को अपडेट करें और Public Chat View पर जाएँ
-                randomChatView.innerHTML = `<h2>Random Chat</h2><p>Match Found! Start chatting in your Inbox view.</p><button id="start-random-match-btn" class="square-btn type-b">Start New Match</button>`;
-                handleNavigation('inbox-view'); // अब Inbox पर रीडायरेक्ट करते हैं
-            })
-            .catch(error => console.error("Error creating chat:", error));
             
-            // Queue से दोनों यूज़र्स को हटा दें 
-            remove(ref(db, `matchQueue/${user1Uid}`));
-            remove(ref(db, `matchQueue/${user2Uid}`));
+            // Get other user's display name from the queue (for better display)
+            const queueRef = ref(db, 'matchQueue');
+            get(ref(db, `matchQueue/${user2Uid}`)).then((snapshot) => {
+                const otherDisplayName = snapshot.val()?.displayName || 'Stranger';
+
+                set(chatRef, {
+                    participants: {
+                        [user1Uid]: { displayName: auth.currentUser.displayName || 'User' },
+                        [user2Uid]: { displayName: otherDisplayName } 
+                    },
+                    status: 'active',
+                    createdAt: serverTimestamp()
+                })
+                .then(() => {
+                    alert(`Match Found! You are now connected with ${otherDisplayName}. Check your Inbox.`);
+                    randomChatView.innerHTML = `<h2>Random Chat</h2><p>Match Found with ${otherDisplayName}! Go to your Inbox to start chatting.</p><button id="start-random-match-btn" class="square-btn type-b">Start New Match</button>`;
+                    handleNavigation('inbox-view'); // Inbox पर रीडायरेक्ट करते हैं
+                    loadChatList(); // Inbox List को तुरंत अपडेट करें
+                })
+                .catch(error => console.error("Error creating chat:", error));
+                
+                // Queue से दोनों यूज़र्स को हटा दें 
+                remove(ref(db, `matchQueue/${user1Uid}`));
+                remove(ref(db, `matchQueue/${user2Uid}`));
+            });
         };
 
 
-        // 💡 NEW FUNCTION: मैच Queue में यूज़र को डालना और मैच ढूँढना
+        // 💡 FUNCTION: मैच Queue में यूज़र को डालना और मैच ढूँढना
         const startRandomMatchmaking = async () => {
             const currentUser = auth.currentUser;
             if (!currentUser || currentUser.isAnonymous) {
@@ -371,58 +532,47 @@
                 return;
             }
 
-            // 1. Loading Screen दिखाएँ और 'Random Chat' व्यू पर जाएँ
             randomChatView.innerHTML = `<h2>Searching for a Match...</h2><p>Please wait while we connect you with a stranger.</p><button id="cancel-match-btn" class="square-btn type-b">Cancel Matchmaking</button>`;
             handleNavigation('random-chat-view');
 
             const queueRef = ref(db, 'matchQueue');
 
-            // 2. Queue में यूज़र को जोड़ें
             await set(ref(db, `matchQueue/${currentUser.uid}`), {
                 displayName: currentUser.displayName || 'Stranger',
                 timestamp: serverTimestamp()
             });
             
-            // Cancel बटन लॉजिक
             document.getElementById('cancel-match-btn').addEventListener('click', () => {
                 remove(ref(db, `matchQueue/${currentUser.uid}`));
                 if (currentMatchListener) {
-                    off(currentMatchListener); // Listener बंद करें
+                    off(currentMatchListener); 
                 }
                 randomChatView.innerHTML = `<h2>Random Chat</h2><p>Matchmaking cancelled. Click 'Start Match' to try again.</p><button id="start-random-match-btn" class="square-btn type-b">Start Match</button>`;
-                // Cancel के बाद Start Match बटन पर फिर से listener जोड़ें
                 document.getElementById('start-random-match-btn').addEventListener('click', startRandomMatchmaking);
             });
 
-            // 3. मैच ढूँढने के लिए Queue को पढ़ें
             const findMatch = onValue(queueRef, (snapshot) => {
                 const queue = snapshot.val();
                 if (!queue) return;
                 
                 const uidsInQueue = Object.keys(queue);
                 
-                // चेक करें कि Queue में खुद के अलावा कोई और यूज़र है या नहीं
                 if (uidsInQueue.length >= 2) {
-                    // Random Match Logic: पहले यूज़र को छोड़ कर बाकी में से ढूँढे
                     const potentialMatchUid = uidsInQueue.find(uid => uid !== currentUser.uid);
 
                     if (potentialMatchUid) {
-                        // मैच मिल गया! listener को बंद करें 
                         off(findMatch);
-                        
-                        // 4. नया चैट रूम बनाएँ
                         createNewRandomChat(currentUser.uid, potentialMatchUid);
                     }
                 }
             });
 
-            currentMatchListener = findMatch; // listener को सेव करें ताकि बाद में बंद कर सकें (cancel बटन पर)
+            currentMatchListener = findMatch; 
         };
 
         // 5. Bottom Nav Button और Start Match बटन पर Listener जोड़ें
         randomChatBtn.addEventListener('click', () => {
             if (auth.currentUser) {
-                // सीधे Matchmaking शुरू करें जब Random पर क्लिक हो
                 startRandomMatchmaking();
             } else {
                 alert("Please sign in to use Random Chat.");
@@ -430,8 +580,6 @@
             }
         });
 
-        // 6. Random Chat View के अंदर Placeholder बटन पर Listener जोड़ें (जब Match Cancel हो या पहली बार View हो)
-        // यह सुनिश्चित करता है कि 'Start Match' बटन हमेशा काम करे
         document.getElementById('random-chat-view').addEventListener('click', (e) => {
             if (e.target.id === 'start-random-match-btn') {
                 startRandomMatchmaking();
@@ -457,13 +605,6 @@
         document.getElementById('theme-toggle').addEventListener('click', () => {
             document.body.classList.toggle('dark-mode');
         });
-
-        // ***************************************************************
-        // PLACEHOLDERS FOR ADVANCED FEATURES (4, 6, 7, 8, 9, 10)
-        // ***************************************************************
-        
-        // Note: Random Chat (Point 5) logic is now fully implemented above.
-
     </script>
 </body>
 </html>
