@@ -4,7 +4,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FUNTIMECHAT</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css"> 
+    <style>
+        /* Minimal CSS additions from Point 12 (Emoji Picker Positioning) */
+        .emoji-picker {
+            position: absolute;
+            bottom: 60px; /* Adjust based on input area height */
+            right: 0;
+            width: 300px;
+            height: 200px;
+            background: var(--bg-color-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            z-index: 1000;
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .emoji-picker button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 24px;
+            padding: 2px;
+            margin: 2px;
+            line-height: 1;
+        }
+    </style>
 </head>
 <body>
 
@@ -46,12 +74,14 @@
                 </div>
                 <div id="messages-container" class="message-list-area">
                     </div>
-                <div id="typing-indicator" class="typing-status" style="display:none;">Someone is typing...</div>
-                <div class="input-area">
+                <div id="public-typing-indicator" class="typing-status" style="display:none;"></div>
+                <div class="input-area" style="position:relative;">
                     <input type="text" id="message-input" placeholder="Type a message...">
                     <input type="file" id="public-file-upload-input" style="display:none;">
                     <button id="public-upload-file-btn">📎</button>
+                    <button id="public-emoji-btn">😊</button> 
                     <button id="send-message-btn" class="square-btn type-b">➡️</button>
+                    <div id="public-emoji-picker" class="emoji-picker" style="display:none;"></div>
                 </div>
             </div>
 
@@ -70,11 +100,14 @@
                         </div>
                     </div>
                     <div id="private-messages-container" class="message-list-area" style="flex-grow:1; height: auto;"></div>
-                    <div class="input-area">
+                    <div id="private-typing-indicator" class="typing-status" style="display:none;"></div>
+                    <div class="input-area" style="position:relative;">
                         <input type="text" id="private-message-input" placeholder="Type private message...">
                         <input type="file" id="private-file-upload-input" style="display:none;">
                         <button id="private-upload-file-btn">📎</button>
+                        <button id="private-emoji-btn">😊</button>
                         <button id="private-send-message-btn" class="square-btn type-b">➡️</button>
+                        <div id="private-emoji-picker" class="emoji-picker" style="display:none;"></div>
                     </div>
                 </div>
             </div>
@@ -104,6 +137,7 @@
                     <p>Your friend list is empty. Find users using the search bar above!</p>
                 </div>
             </div>
+            
             <div id="admin-view" class="view" style="display:none;">
                 <h2>🔑 Admin Dashboard</h2>
                 <p>Manage users and global content.</p>
@@ -126,7 +160,8 @@
                     </div>
                 </div>
             </div>
-            </main>
+            
+        </main>
 
         <div id="call-overlay" class="call-ui" style="display:none;">
             <h2 id="call-status">Connecting...</h2>
@@ -155,7 +190,8 @@
     <audio id="incoming-call-ringtone" src="ringtone.mp3" preload="auto"></audio>
 
     <script type="module">
-        // 🚨 STEP 1: Firebase Configuration (Your Code)
+        
+        // 🚨 STEP 1: Firebase Configuration (Your Details)
         const firebaseConfig = {
             apiKey: "AIzaSyB__tJ3sv3cB2N3vKHFCv8SYngJENQxwhY",
             authDomain: "funtimechat69-39947.firebaseapp.com",
@@ -186,10 +222,11 @@
         const db = getDatabase(app);
         const storage = getStorage(app);
 
-        // Global variables for Admin status
+        // Global variables
         let currentUserIsAdmin = false;
+        let typingTimeout = null; // for Point 11
         
-        // Utility function to switch views
+        // Utility function to switch views (Point 1)
         const handleNavigation = (viewId) => {
             document.querySelectorAll('.view').forEach(view => {
                 view.style.display = 'none';
@@ -202,10 +239,9 @@
         };
 
         // ***************************************************************
-        // 8. NOTIFICATION SYSTEM (NEW LOGIC)
+        // 8. NOTIFICATION SYSTEM
         // ***************************************************************
         
-        // 💡 FUNCTION: ब्राउज़र नोटिफिकेशन के लिए अनुमति मांगना
         const requestNotificationPermission = () => {
             if (Notification.permission === 'default') {
                 Notification.requestPermission().then(permission => {
@@ -216,7 +252,6 @@
             }
         };
 
-        // 💡 FUNCTION: एक नया नोटिफिकेशन दिखाना
         const showNotification = (title, body) => {
             document.getElementById('new-message-sound').play().catch(e => console.log("Sound play failed:", e));
 
@@ -229,7 +264,6 @@
             }
         };
         
-        // 💡 FUNCTION: User data save (Checks and updates admin status)
         const saveUserData = async (user) => {
             if (user && !user.isAnonymous) {
                 const userRef = ref(db, `users/${user.uid}`);
@@ -242,7 +276,6 @@
 
                 await set(userRef, userData, { merge: true }).catch(e => console.error("Error saving user data:", e));
 
-                // Check Admin Status
                 const snapshot = await get(userRef);
                 const isAdmin = snapshot.val()?.isAdmin || false;
                 currentUserIsAdmin = isAdmin; 
@@ -251,10 +284,9 @@
         };
 
         // ***************************************************************
-        // 2. ACCOUNT SYSTEM (AUTHENTICATION) - ACTIVE
+        // 2. ACCOUNT SYSTEM (AUTHENTICATION)
         // ***************************************************************
 
-        // Auth State Listener (Handles Login/Logout UI)
         onAuthStateChanged(auth, (user) => {
             document.getElementById('loading-screen').style.display = 'none';
             document.getElementById('app-container').style.display = 'flex'; 
@@ -267,7 +299,7 @@
                 document.getElementById('auth-view').style.display = 'none';
                 userPhotoEl.style.display = 'block';
                 signoutBtn.style.display = 'block';
-                adminBtn.style.display = 'none'; // Will be set correctly inside saveUserData
+                adminBtn.style.display = 'none'; 
 
                 userPhotoEl.src = user.photoURL || 'default.png';
                 
@@ -275,12 +307,12 @@
                     handleNavigation('public-chat-view');
                 }
                 
-                // CORE INTEGRATION CALLS
-                saveUserData(user); // Now asynchronous
-                requestNotificationPermission(); // Point 8
+                saveUserData(user); 
+                requestNotificationPermission(); 
                 loadChatList();
                 loadFriendsData();
                 setupCallListener(user.uid);
+                setupPublicTypingListener(); // Point 11 setup
             } else {
                 currentUserIsAdmin = false;
                 document.getElementById('auth-view').style.display = 'block';
@@ -292,7 +324,6 @@
             }
         });
         
-        // [Existing Auth Code...]
         document.getElementById('google-signin-btn').addEventListener('click', async () => {
             const provider = new GoogleAuthProvider();
             try {
@@ -357,7 +388,7 @@
         });
 
         // ***************************************************************
-        // 3. PUBLIC CHAT SYSTEM (ACTIVE SEND/RECEIVE)
+        // 3. PUBLIC CHAT SYSTEM & MESSAGE RENDERING
         // ***************************************************************
 
         const messagesContainer = document.getElementById('messages-container');
@@ -365,7 +396,9 @@
         const sendMessageBtn = document.getElementById('send-message-btn');
         const publicFileUploadInput = document.getElementById('public-file-upload-input');
         const publicUploadFileBtn = document.getElementById('public-upload-file-btn');
+        const publicTypingIndicator = document.getElementById('public-typing-indicator'); // Point 11
         const messagesRef = ref(db, 'public_rooms/global/messages');
+        const typingRef = ref(db, 'public_rooms/global/typing'); // Point 11
         const recentMessagesQuery = query(messagesRef, limitToLast(100)); 
 
         const updateMessageSeenStatus = (messageKey, roomType, chatID) => {
@@ -401,9 +434,11 @@
             }
 
             const messageElement = document.createElement('div');
-            messageElement.className = `message-card ${seenStatus}`; 
+            // Assuming CSS provides styling for message-card, seen, delivered, received
+            messageElement.className = `message-card ${seenStatus} ${message.uid === currentUserUid ? 'outgoing' : 'incoming'}`; 
             
             let contentHTML = '';
+            // Point 10: Media Rendering
             if (message.fileURL && message.fileType) {
                 if (message.fileType.startsWith('image/')) {
                     contentHTML = `<img src="${message.fileURL}" alt="Shared Image" style="max-width: 100%; height: auto; border-radius: 8px;">`;
@@ -415,7 +450,15 @@
             }
             
             if (message.text) {
-                contentHTML += `<p class="message-text">${message.text}</p>`;
+                // Point 12: Simple Emoji Text Conversion
+                const textWithEmojis = message.text
+                    .replace(/:\)/g, '😊')
+                    .replace(/:\(/g, '😞')
+                    .replace(/;-\)/g, '😉')
+                    .replace(/:D/g, '😁')
+                    .replace(/<3/g, '❤️');
+                    
+                contentHTML += `<p class="message-text">${textWithEmojis}</p>`;
             } else if (!message.fileURL) {
                 contentHTML += `<p class="message-text">[Empty Message]</p>`;
             }
@@ -423,7 +466,7 @@
             messageElement.innerHTML = `
                 <div class="message-header">
                     <span class="user-name">${message.displayName || 'Anonymous'}</span>
-                    <span class="timestamp">${new Date(message.timestamp).toLocaleTimeString()}</span>
+                    <span class="timestamp">${message.timestamp ? new Date(message.timestamp).toLocaleTimeString() : '...'}</span>
                 </div>
                 ${contentHTML}
                 <div class="message-status-ticks">
@@ -433,7 +476,7 @@
             messageElement.dataset.key = key; 
             container.appendChild(messageElement);
         };
-
+        
         const sendChatMessage = async (containerRef, messageText, fileURL, fileType) => {
             const currentUser = auth.currentUser;
             if (!currentUser || (!messageText.trim() && !fileURL)) {
@@ -454,23 +497,36 @@
                     timestamp: serverTimestamp(),
                     reads: initialReads, 
                 });
+                
+                // Point 11: Reset typing status after sending message
+                if (containerRef === messagesRef) {
+                    await set(ref(db, `public_rooms/global/typing/${currentUser.uid}`), null);
+                } else if (containerRef.toString().includes('private_chats')) {
+                     await set(ref(db, `private_chats/${currentChatID}/typing/${currentUser.uid}`), null);
+                }
+
             } catch (e) {
                 console.error("Error sending message: ", e);
             }
         };
 
-        // Sending Text Message Logic (Public Chat)
         sendMessageBtn.addEventListener('click', async () => {
             const messageText = messageInput.value.trim();
-            if (messageText) {
-                await sendChatMessage(messagesRef, messageText, null, null);
-                messageInput.value = '';
+            if (messageText || publicFileUploadInput.files.length > 0) { // Check if text or file exists
+                if (publicFileUploadInput.files.length > 0) {
+                    // File upload logic will handle the sendChatMessage internally
+                    // We only clear the input here if no text was provided, otherwise the file input handler should clear it
+                    if(!messageText) messageInput.value = '';
+                } else {
+                    await sendChatMessage(messagesRef, messageText, null, null);
+                    messageInput.value = '';
+                }
             } else {
                 alert("Please type a message or upload a file first.");
             }
         });
 
-        // Receiving Messages Logic (Public Chat) - UPDATED FOR NOTIFICATION
+        // Receiving Messages Logic (Public Chat)
         onValue(recentMessagesQuery, (snapshot) => {
             const lastMessageKey = snapshot.val() ? Object.keys(snapshot.val()).pop() : null;
             let lastMessage = null;
@@ -485,14 +541,65 @@
             });
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-            if (lastMessage && lastMessage.uid !== auth.currentUser?.uid) {
-                 const messageBody = lastMessage.text || (lastMessage.fileType.startsWith('image/') ? '[Image]' : '[File]');
+            if (lastMessage && lastMessage.uid !== auth.currentUser?.uid && document.getElementById('public-chat-view').style.display === 'block') {
+                 const messageBody = lastMessage.text || (lastMessage.fileType?.startsWith('image/') ? '[Image]' : '[File]');
                  showNotification(`New Global Message from ${lastMessage.displayName}`, messageBody);
             }
         });
         
         // ***************************************************************
-        // 4. PRIVATE CHAT (INBOX) SYSTEM (ACTIVE LOGIC)
+        // 11. TYPING INDICATOR LOGIC
+        // ***************************************************************
+
+        // Function to set typing status
+        const setTypingStatus = (typingRef, isTyping) => {
+            const currentUser = auth.currentUser;
+            if (!currentUser) return;
+            const userTypingRef = ref(typingRef, currentUser.uid);
+
+            if (isTyping) {
+                set(userTypingRef, auth.currentUser.displayName || 'A user');
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    setTypingStatus(typingRef, false);
+                }, 3000); // Stop typing after 3 seconds of inactivity
+            } else {
+                set(userTypingRef, null);
+            }
+        };
+
+        // Public chat input listener
+        messageInput.addEventListener('keypress', () => {
+            setTypingStatus(typingRef, true);
+        });
+
+        // Public typing status listener
+        const setupPublicTypingListener = () => {
+            onValue(typingRef, (snapshot) => {
+                const typingUsers = snapshot.val();
+                if (!typingUsers) {
+                    publicTypingIndicator.style.display = 'none';
+                    return;
+                }
+
+                const currentUser = auth.currentUser;
+                const otherTypingUsers = Object.keys(typingUsers)
+                    .filter(uid => uid !== currentUser?.uid)
+                    .map(uid => typingUsers[uid]);
+                
+                if (otherTypingUsers.length > 0) {
+                    const names = otherTypingUsers.join(', ');
+                    publicTypingIndicator.textContent = `${names} is typing...`;
+                    publicTypingIndicator.style.display = 'block';
+                } else {
+                    publicTypingIndicator.style.display = 'none';
+                }
+            });
+        };
+
+
+        // ***************************************************************
+        // 4. PRIVATE CHAT (INBOX) SYSTEM 
         // ***************************************************************
         
         const chatListContainer = document.getElementById('chat-list-container');
@@ -501,6 +608,7 @@
         const privateSendMessageBtn = document.getElementById('private-send-message-btn');
         const privateFileUploadInput = document.getElementById('private-file-upload-input');
         const privateUploadFileBtn = document.getElementById('private-upload-file-btn');
+        const privateTypingIndicator = document.getElementById('private-typing-indicator'); // Point 11
         const backToInboxBtn = document.getElementById('back-to-inbox-list');
         const privateChatRoom = document.getElementById('private-chat-room');
         const chatPartnerNameEl = document.getElementById('chat-partner-name');
@@ -508,6 +616,7 @@
         let currentChatID = null; 
         let currentOtherUid = null; 
         let privateMessageListener = null; 
+        let privateTypingListener = null; // Point 11
 
         const loadChatList = () => {
             if (!auth.currentUser) return;
@@ -516,8 +625,9 @@
             onValue(chatsRef, async (snapshot) => {
                 chatListContainer.innerHTML = '';
                 let hasChats = false;
+                const chatPromises = [];
 
-                snapshot.forEach(async (childSnapshot) => {
+                snapshot.forEach(childSnapshot => {
                     const chat = childSnapshot.val();
                     const chatID = childSnapshot.key;
                     
@@ -527,42 +637,57 @@
                         const otherUid = Object.keys(chat.participants).find(uid => uid !== auth.currentUser.uid);
                         const otherDisplayName = chat.participants[otherUid]?.displayName || 'Stranger';
                         
-                        const lastMessageSnapshot = await get(query(ref(db, `private_chats/${chatID}/messages`), limitToLast(1)));
-                        let lastMessageText = 'Start chatting!';
-                        
-                        lastMessageSnapshot.forEach(msgSnap => {
-                            const msg = msgSnap.val();
-                            if (msg.fileURL) {
-                                lastMessageText = msg.fileType.startsWith('image/') ? '📷 Image' : (msg.fileType.startsWith('video/') ? '📹 Video' : '📎 File');
-                            } else {
-                                lastMessageText = msg.text;
-                            }
-                        });
+                        // Use a promise to load the last message asynchronously
+                        const chatPromise = get(query(ref(db, `private_chats/${chatID}/messages`), limitToLast(1)))
+                            .then(lastMessageSnapshot => {
+                                let lastMessageText = 'Start chatting!';
+                                let lastMessageTimestamp = chat.createdAt || 0; // Fallback to chat creation time
+                                
+                                lastMessageSnapshot.forEach(msgSnap => {
+                                    const msg = msgSnap.val();
+                                    lastMessageTimestamp = msg.timestamp;
+                                    if (msg.fileURL) {
+                                        lastMessageText = msg.fileType?.startsWith('image/') ? '📷 Image' : (msg.fileType?.startsWith('video/') ? '📹 Video' : '📎 File');
+                                    } else {
+                                        lastMessageText = msg.text;
+                                    }
+                                });
 
-                        const chatItem = document.createElement('div');
-                        chatItem.className = 'chat-list-item'; 
-                        chatItem.dataset.chatID = chatID;
-                        chatItem.dataset.otherUid = otherUid; 
-                        chatItem.dataset.otherName = otherDisplayName;
-                        chatItem.innerHTML = `
-                            <h3>${otherDisplayName}</h3>
-                            <p>${lastMessageText.substring(0, 30)}...</p>
-                            <span class="chat-time">${new Date(chat.createdAt).toLocaleDateString()}</span>
-                        `;
-                        
-                        chatItem.addEventListener('click', () => openPrivateChat(chatID, otherUid, otherDisplayName));
-                        
-                        chatListContainer.appendChild(chatItem);
+                                return { chatID, otherUid, otherDisplayName, lastMessageText, lastMessageTimestamp };
+                            });
+                        chatPromises.push(chatPromise);
                     }
                 });
                 
-                if (!hasChats) {
-                    chatListContainer.innerHTML = '<p>Your inbox is empty. Try starting a Random Chat or add a Friend!</p>';
-                }
+                // Wait for all last message promises to resolve
+                Promise.all(chatPromises).then(chatsData => {
+                    // Sort chats by last message timestamp (most recent first)
+                    chatsData.sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
+
+                    if (chatsData.length > 0) {
+                        chatsData.forEach(data => {
+                            const chatItem = document.createElement('div');
+                            chatItem.className = 'chat-list-item'; 
+                            chatItem.dataset.chatID = data.chatID;
+                            chatItem.dataset.otherUid = data.otherUid; 
+                            chatItem.dataset.otherName = data.otherDisplayName;
+                            chatItem.innerHTML = `
+                                <h3>${data.otherDisplayName}</h3>
+                                <p>${(data.lastMessageText || 'Start chatting!').substring(0, 30)}...</p>
+                                <span class="chat-time">${new Date(data.lastMessageTimestamp).toLocaleDateString()}</span>
+                            `;
+                            
+                            chatItem.addEventListener('click', () => openPrivateChat(data.chatID, data.otherUid, data.otherDisplayName));
+                            
+                            chatListContainer.appendChild(chatItem);
+                        });
+                    } else if (!hasChats) {
+                        chatListContainer.innerHTML = '<p>Your inbox is empty. Try starting a Random Chat or add a Friend!</p>';
+                    }
+                });
             });
         };
 
-        // 💡 FUNCTION: एक प्राइवेट चैट रूम खोलना (UPDATED FOR NOTIFICATION)
         const openPrivateChat = (chatID, otherUid, otherName) => {
             currentChatID = chatID;
             currentOtherUid = otherUid; 
@@ -575,11 +700,16 @@
             
             privateMessagesContainer.innerHTML = ''; 
             
+            // Cleanup previous listeners
             if (privateMessageListener) {
                 off(privateMessageListener);
             }
+            if (privateTypingListener) { 
+                off(privateTypingListener);
+            }
 
             const messagesRef = ref(db, `private_chats/${chatID}/messages`);
+            const typingRef = ref(db, `private_chats/${chatID}/typing`); 
             const recentMessagesQuery = query(messagesRef, limitToLast(100)); 
 
             privateMessageListener = onValue(recentMessagesQuery, (snapshot) => {
@@ -597,32 +727,67 @@
                 privateMessagesContainer.scrollTop = privateMessagesContainer.scrollHeight;
 
                 if (lastMessage && lastMessage.uid !== auth.currentUser?.uid && privateChatRoom.style.display === 'flex' && document.hidden) {
-                    const messageBody = lastMessage.text || (lastMessage.fileType.startsWith('image/') ? '[Image]' : '[File]');
+                    const messageBody = lastMessage.text || (lastMessage.fileType?.startsWith('image/') ? '[Image]' : '[File]');
                     showNotification(`New Message from ${otherName}`, messageBody);
                 }
             });
+            
+            // Point 11. PRIVATE TYPING LISTENER
+            privateTypingListener = onValue(typingRef, (snapshot) => {
+                const typingUsers = snapshot.val();
+                privateTypingIndicator.style.display = 'none';
+                if (!typingUsers) return;
+
+                const currentUser = auth.currentUser;
+                const otherTypingUsers = Object.keys(typingUsers)
+                    .filter(uid => uid !== currentUser?.uid && typingUsers[uid])
+                    .map(uid => typingUsers[uid]);
+                
+                if (otherTypingUsers.length > 0) {
+                    privateTypingIndicator.textContent = `${otherTypingUsers.join(', ')} is typing...`;
+                    privateTypingIndicator.style.display = 'block';
+                }
+            });
+            
+             // Point 11. PRIVATE TYPING INPUT LISTENER setup for the current chat
+            privateMessageInput.onkeypress = () => {
+                if (currentChatID) {
+                    setTypingStatus(ref(db, `private_chats/${currentChatID}/typing`), true);
+                }
+            };
         };
 
 
-        // 💡 EVENT: प्राइवेट टेक्स्ट मैसेज भेजना
         privateSendMessageBtn.addEventListener('click', async () => {
             const messageText = privateMessageInput.value.trim();
-            if (messageText && currentChatID) {
-                const messagesRef = ref(db, `private_chats/${currentChatID}/messages`);
-                await sendChatMessage(messagesRef, messageText, null, null);
-                privateMessageInput.value = '';
+            if (currentChatID) {
+                if (messageText || privateFileUploadInput.files.length > 0) {
+                    const messagesRef = ref(db, `private_chats/${currentChatID}/messages`);
+                    if (privateFileUploadInput.files.length > 0) {
+                        // File upload logic handles sendChatMessage internally
+                        if(!messageText) privateMessageInput.value = '';
+                    } else {
+                        await sendChatMessage(messagesRef, messageText, null, null);
+                        privateMessageInput.value = '';
+                    }
+                } else {
+                     alert("Please type a message or upload a file first.");
+                }
             } else {
-                alert("Please type a message or upload a file first.");
+                alert("Please select a private chat room first.");
             }
         });
 
-        // 💡 EVENT: Inbox List पर वापस जाना
         backToInboxBtn.addEventListener('click', () => {
             currentChatID = null;
             currentOtherUid = null;
             if (privateMessageListener) {
                 off(privateMessageListener); 
             }
+            if (privateTypingListener) { 
+                off(privateTypingListener);
+            }
+            privateMessageInput.onkeypress = null; // Clear the keypress listener
             
             document.getElementById('inbox-title').textContent = 'Private Messages (Inbox)';
             chatListContainer.style.display = 'block';
@@ -631,36 +796,101 @@
         });
 
         // ***************************************************************
+        // 12. EMOJIS AND STICKERS LOGIC
+        // ***************************************************************
+
+        const emojis = [
+            '😊', '😂', '😍', '🤔', '😎', '😭', '😜', '😇', '🙈', '🙊', 
+            '🐶', '🐱', '👍', '👎', '❤️', '🔥', '🎉', '🍕', '🍻', '⚽'
+        ];
+
+        const generateEmojiPicker = (pickerId, inputId) => {
+            const picker = document.getElementById(pickerId);
+            picker.innerHTML = '';
+            emojis.forEach(emoji => {
+                const button = document.createElement('button');
+                button.textContent = emoji;
+                button.dataset.emoji = emoji;
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const input = document.getElementById(inputId);
+                    input.value += e.target.dataset.emoji;
+                    // Hide picker after selection
+                    picker.style.display = 'none';
+                    // Re-focus the input field
+                    input.focus();
+                });
+                picker.appendChild(button);
+            });
+        };
+
+        // Setup Emojis for Public Chat
+        generateEmojiPicker('public-emoji-picker', 'message-input');
+        document.getElementById('public-emoji-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            const picker = document.getElementById('public-emoji-picker');
+            picker.style.display = picker.style.display === 'none' ? 'flex' : 'none';
+            document.getElementById('private-emoji-picker').style.display = 'none'; // Close other picker
+        });
+
+        // Setup Emojis for Private Chat
+        generateEmojiPicker('private-emoji-picker', 'private-message-input');
+        document.getElementById('private-emoji-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            const picker = document.getElementById('private-emoji-picker');
+            picker.style.display = picker.style.display === 'none' ? 'flex' : 'none';
+            document.getElementById('public-emoji-picker').style.display = 'none'; // Close other picker
+        });
+        
+        // Hide picker when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.input-area') && !e.target.closest('.emoji-picker')) {
+                document.getElementById('public-emoji-picker').style.display = 'none';
+                document.getElementById('private-emoji-picker').style.display = 'none';
+            }
+        });
+
+
+        // ***************************************************************
         // 5. RANDOM CHAT SYSTEM (ACTIVE LOGIC)
         // ***************************************************************
         
-        // [Existing Random Chat Logic is correct]
         const randomChatBtn = document.querySelector('#bottom-nav button[data-view="random-chat-view"]');
         const randomChatView = document.getElementById('random-chat-view');
         let currentMatchListener = null; 
+        
         const createNewRandomChat = (user1Uid, user2Uid) => {
             const chatID = [user1Uid, user2Uid].sort().join('_');
             const chatRef = ref(db, `private_chats/${chatID}`);
             const queueRef = ref(db, 'matchQueue');
+            
             get(ref(db, `matchQueue/${user2Uid}`)).then((snapshot) => {
                 const otherDisplayName = snapshot.val()?.displayName || 'Stranger';
-                set(chatRef, {
-                    participants: {
-                        [user1Uid]: { displayName: auth.currentUser.displayName || 'User' },
-                        [user2Uid]: { displayName: otherDisplayName } 
-                    },
-                    status: 'active',
-                    createdAt: serverTimestamp()
-                })
-                .then(() => {
-                    alert(`Match Found! You are now connected with ${otherDisplayName}. Check your Inbox.`);
-                    randomChatView.innerHTML = `<h2>Random Chat</h2><p>Match Found with ${otherDisplayName}! Go to your Inbox to start chatting.</p><button id="start-random-match-btn" class="square-btn type-b">Start New Match</button>`;
-                    handleNavigation('inbox-view'); 
-                    loadChatList(); 
-                })
-                .catch(error => console.error("Error creating chat:", error));
-                remove(ref(db, `matchQueue/${user1Uid}`));
-                remove(ref(db, `matchQueue/${user2Uid}`));
+                
+                // Fetch current user's display name accurately
+                get(ref(db, `users/${user1Uid}`)).then(userSnap => {
+                    const userDisplayName = userSnap.val()?.displayName || 'User';
+
+                    set(chatRef, {
+                        participants: {
+                            [user1Uid]: { displayName: userDisplayName },
+                            [user2Uid]: { displayName: otherDisplayName } 
+                        },
+                        status: 'active',
+                        createdAt: serverTimestamp()
+                    })
+                    .then(() => {
+                        alert(`Match Found! You are now connected with ${otherDisplayName}. Check your Inbox.`);
+                        randomChatView.innerHTML = `<h2>Random Chat</h2><p>Match Found with ${otherDisplayName}! Go to your Inbox to start chatting.</p><button id="start-random-match-btn" class="square-btn type-b">Start New Match</button>`;
+                        handleNavigation('inbox-view'); 
+                        loadChatList(); 
+                    })
+                    .catch(error => console.error("Error creating chat:", error));
+                    
+                    // Cleanup queue
+                    remove(ref(db, `matchQueue/${user1Uid}`));
+                    remove(ref(db, `matchQueue/${user2Uid}`));
+                });
             });
         };
 
@@ -673,26 +903,38 @@
             randomChatView.innerHTML = `<h2>Searching for a Match...</h2><p>Please wait while we connect you with a stranger.</p><button id="cancel-match-btn" class="square-btn type-b">Cancel Matchmaking</button>`;
             handleNavigation('random-chat-view');
             const queueRef = ref(db, 'matchQueue');
+            
             await set(ref(db, `matchQueue/${currentUser.uid}`), {
                 displayName: currentUser.displayName || 'Stranger',
                 timestamp: serverTimestamp()
             });
-            document.getElementById('cancel-match-btn').addEventListener('click', () => {
+            
+            // Set up cancellation listener
+            document.getElementById('cancel-match-btn').onclick = () => {
                 remove(ref(db, `matchQueue/${currentUser.uid}`));
                 if (currentMatchListener) {
                     off(currentMatchListener); 
                 }
                 randomChatView.innerHTML = `<h2>Random Chat</h2><p>Matchmaking cancelled. Click 'Start Match' to try again.</p><button id="start-random-match-btn" class="square-btn type-b">Start Match</button>`;
                 document.getElementById('start-random-match-btn').addEventListener('click', startRandomMatchmaking);
-            });
+            };
+            
+            // Start listening for a match
             const findMatch = onValue(queueRef, (snapshot) => {
                 const queue = snapshot.val();
                 if (!queue) return;
                 const uidsInQueue = Object.keys(queue);
-                if (uidsInQueue.length >= 2) {
-                    const potentialMatchUid = uidsInQueue.find(uid => uid !== currentUser.uid);
-                    if (potentialMatchUid) {
-                        off(findMatch);
+                
+                // Find the oldest user in the queue other than the current user
+                const potentialMatchUid = uidsInQueue
+                    .filter(uid => uid !== currentUser.uid)
+                    .sort((uidA, uidB) => queue[uidA].timestamp - queue[uidB].timestamp)[0];
+                    
+                if (potentialMatchUid) {
+                    off(findMatch);
+                    // Ensure the current user is the one who initiates the chat creation (to prevent duplicates)
+                    // The user with the lexicographically smaller UID should create the chat
+                    if (currentUser.uid < potentialMatchUid) {
                         createNewRandomChat(currentUser.uid, potentialMatchUid);
                     }
                 }
@@ -701,10 +943,10 @@
         };
 
         randomChatBtn.addEventListener('click', () => {
-            if (auth.currentUser) {
+            if (auth.currentUser && !auth.currentUser.isAnonymous) {
                 startRandomMatchmaking();
             } else {
-                alert("Please sign in to use Random Chat.");
+                alert("Please sign in with a permanent account to use Random Chat.");
                 handleNavigation('auth-view');
             }
         });
@@ -716,10 +958,9 @@
         });
 
         // ***************************************************************
-        // 6. AUDIO/VIDEO CALLS (WebRTC) - ACTIVE LOGIC
+        // 6. AUDIO/VIDEO CALLS (WebRTC)
         // ***************************************************************
         
-        // [Existing Call Logic is correct]
         const callOverlay = document.getElementById('call-overlay');
         const localVideo = document.getElementById('local-video');
         const remoteVideo = document.getElementById('remote-video');
@@ -735,6 +976,13 @@
 
         const startCall = async (videoEnabled) => {
             if (!currentOtherUid) return alert("Error: No recipient found.");
+            
+            // Check if user is anonymous
+            if (auth.currentUser.isAnonymous) {
+                alert("Please sign in with a registered account to make calls.");
+                return;
+            }
+            
             try {
                 const constraints = { video: videoEnabled, audio: true };
                 localStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -749,12 +997,16 @@
             document.getElementById('accept-call-btn').style.display = 'none';
             document.getElementById('reject-call-btn').style.display = 'none';
             document.getElementById('end-call-btn').style.display = 'block';
+            
             pc = new RTCPeerConnection(iceServers);
             localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+            
             pc.ontrack = (event) => {
                 remoteVideo.srcObject = event.streams[0];
             };
+            
             const callRef = ref(db, `calls/${currentOtherUid}`); 
+            
             pc.onicecandidate = async (event) => {
                 if (event.candidate) {
                     await push(ref(db, `calls/${currentOtherUid}/iceCandidates`), {
@@ -763,8 +1015,10 @@
                     });
                 }
             };
+            
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
+            
             await set(callRef, {
                 callerUid: auth.currentUser.uid,
                 callerName: auth.currentUser.displayName || 'User',
@@ -773,11 +1027,24 @@
                 timestamp: serverTimestamp(),
                 status: 'ringing'
             });
+            
             callStatusEl.textContent = `Ringing ${chatPartnerNameEl.textContent}...`;
             document.getElementById('incoming-call-ringtone').play();
+            
+            // Listen for answer/reject from the receiver
+            onValue(ref(db, `calls/${currentOtherUid}`), (snapshot) => {
+                const data = snapshot.val();
+                if (data?.status === 'answered' && data?.answer) {
+                    off(ref(db, `calls/${currentOtherUid}`)); // Stop listening for status
+                    // Handled in setupCallListener's answer branch
+                } else if (data?.status === 'rejected') {
+                    alert(`${chatPartnerNameEl.textContent} rejected your call.`);
+                    endCall();
+                }
+            }, {onlyOnce: true});
         };
 
-        const answerCall = async (callData, callKey) => {
+        const answerCall = async (callData) => {
             const isVideoCall = callData.callType === 'video';
             try {
                 const constraints = { video: isVideoCall, audio: true };
@@ -795,13 +1062,17 @@
             document.getElementById('reject-call-btn').style.display = 'none';
             document.getElementById('end-call-btn').style.display = 'block';
             document.getElementById('incoming-call-ringtone').pause();
+            
             pc = new RTCPeerConnection(iceServers);
             localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+            
             pc.ontrack = (event) => {
                 remoteVideo.srcObject = event.streams[0];
                 callStatusEl.textContent = "Call Connected!";
             };
+            
             const answerRef = ref(db, `calls/${callData.callerUid}`); 
+            
             pc.onicecandidate = async (event) => {
                 if (event.candidate) {
                     await push(ref(db, `calls/${callData.callerUid}/iceCandidates`), {
@@ -810,13 +1081,17 @@
                     });
                 }
             };
+            
             await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
+            
             await update(answerRef, {
                 answer: pc.localDescription.toJSON(),
                 status: 'answered'
             });
+            
+            // Listen for ICE candidates from the caller
             onValue(ref(db, `calls/${auth.currentUser.uid}/iceCandidates`), (snapshot) => {
                 snapshot.forEach(async (childSnapshot) => {
                     const candidateData = childSnapshot.val();
@@ -829,6 +1104,8 @@
                     }
                 });
             });
+            
+            // Clean up the call entry for the receiver
             remove(ref(db, `calls/${auth.currentUser.uid}`));
         };
 
@@ -841,22 +1118,32 @@
                 pc.close();
                 pc = null;
             }
+            // Clear call state in DB for the current user (if they are the one ending)
             remove(ref(db, `calls/${auth.currentUser.uid}`));
+            
             callOverlay.style.display = 'none';
             localVideo.srcObject = null;
             remoteVideo.srcObject = null;
             document.getElementById('incoming-call-ringtone').pause();
         };
 
-        // 💡 Call Listener (UPDATED FOR NOTIFICATION)
         const setupCallListener = (uid) => {
             const receiverRef = ref(db, `calls/${uid}`);
 
             onValue(receiverRef, async (snapshot) => {
                 const callData = snapshot.val();
                 
-                if (callData && callData.status === 'ringing' && callData.callerUid !== uid) {
-                    // Show notification/alert for incoming call (Point 8)
+                if (!callData) {
+                    // If the call entry disappears, it means the caller ended the call
+                    if (pc) {
+                        alert("Call ended by the other party.");
+                        endCall();
+                    }
+                    return;
+                }
+                
+                if (callData.status === 'ringing' && callData.callerUid !== uid) {
+                    // Incoming call (Receiver)
                     showNotification(`Incoming Call`, `New ${callData.callType} call from ${callData.callerName}!`);
                     
                     callOverlay.style.display = 'flex';
@@ -866,16 +1153,20 @@
                     document.getElementById('reject-call-btn').style.display = 'block';
                     document.getElementById('incoming-call-ringtone').play();
                     
-                    document.getElementById('accept-call-btn').onclick = () => answerCall(callData, snapshot.key);
+                    document.getElementById('accept-call-btn').onclick = () => answerCall(callData);
                     document.getElementById('reject-call-btn').onclick = () => {
-                        update(receiverRef, { status: 'rejected' });
+                        // Notify the caller that the call was rejected
+                        update(ref(db, `calls/${callData.callerUid}`), { status: 'rejected' });
                         endCall();
                     };
                 } 
                 
-                else if (callData && callData.status === 'answered' && callData.answer && pc) {
+                else if (callData.status === 'answered' && callData.answer && pc && callData.callerUid === uid) {
+                    // Call answered (Caller)
                     await pc.setRemoteDescription(new RTCSessionDescription(callData.answer));
                     callStatusEl.textContent = "Call Connected!";
+                    
+                    // Listen for ICE candidates from the answerer
                     onValue(ref(db, `calls/${uid}/iceCandidates`), (snapshot) => {
                         snapshot.forEach(async (childSnapshot) => {
                             const candidateData = childSnapshot.val();
@@ -888,11 +1179,12 @@
                             }
                         });
                     });
-                } else if (callData && callData.status === 'rejected') {
-                    alert(`${callData.callerName} rejected your call.`);
-                    endCall();
-                } else if (!callData && pc) {
-                    alert("Call ended.");
+                    
+                    // Clear the answer data after processing
+                    remove(ref(db, `calls/${uid}/answer`));
+                } else if (callData.status === 'rejected' && callData.callerUid === uid) {
+                    // Call rejected (Caller)
+                    alert(`${chatPartnerNameEl.textContent || callData.callerName} rejected your call.`);
                     endCall();
                 }
             });
@@ -904,10 +1196,9 @@
 
 
         // ***************************************************************
-        // 7. FRIENDS SYSTEM (ACTIVE LOGIC)
+        // 7. FRIENDS SYSTEM
         // ***************************************************************
         
-        // [Existing Friends Logic is correct]
         const friendSearchInput = document.getElementById('friend-search-input');
         const friendSearchBtn = document.getElementById('friend-search-btn');
         const searchResultsContainer = document.getElementById('search-results-container');
@@ -918,6 +1209,12 @@
         const searchUser = async () => {
             const searchTerm = friendSearchInput.value.trim().toLowerCase();
             searchResultsContainer.innerHTML = '';
+            
+            if (auth.currentUser.isAnonymous) {
+                searchResultsContainer.innerHTML = '<p>Please sign in with a permanent account to search for friends.</p>';
+                return;
+            }
+            
             if (searchTerm.length < 3) {
                 searchResultsContainer.innerHTML = '<p>Enter at least 3 characters to search.</p>';
                 return;
@@ -931,6 +1228,7 @@
                 const user = users[uid];
                 const displayName = user.displayName?.toLowerCase() || '';
                 const email = user.email?.toLowerCase() || '';
+                
                 if (uid !== currentUid && (displayName.includes(searchTerm) || email.includes(searchTerm))) {
                     found = true;
                     const friendItem = document.createElement('div');
@@ -952,15 +1250,19 @@
         const sendFriendRequest = async (targetUid) => {
             const currentUser = auth.currentUser;
             if (!currentUser || targetUid === currentUser.uid) return;
+            
             const requestRef = ref(db, `user_friends/${targetUid}/requests/${currentUser.uid}`);
             await set(requestRef, {
                 senderName: currentUser.displayName || currentUser.email,
                 timestamp: serverTimestamp()
             });
             alert(`Friend request sent to user ${targetUid.substring(0, 8)}...`);
+            
             const btn = document.querySelector(`.send-request-btn[data-uid="${targetUid}"]`);
-            if(btn) btn.textContent = 'Request Sent';
-            if(btn) btn.disabled = true;
+            if(btn) {
+                 btn.textContent = 'Request Sent';
+                 btn.disabled = true;
+            }
         };
 
         searchResultsContainer.addEventListener('click', (e) => {
@@ -973,19 +1275,28 @@
         const acceptFriendRequest = async (senderUid, senderName) => {
             const currentUser = auth.currentUser;
             if (!currentUser) return;
+            
             const currentUserName = currentUser.displayName || currentUser.email;
             const chatID = [currentUser.uid, senderUid].sort().join('_');
+            
+            // Add to current user's friends list
             await set(ref(db, `user_friends/${currentUser.uid}/friends/${senderUid}`), {
                 displayName: senderName,
                 timestamp: serverTimestamp(),
                 chatID: chatID
             });
+            
+            // Add to sender's friends list
             await set(ref(db, `user_friends/${senderUid}/friends/${currentUser.uid}`), {
                 displayName: currentUserName,
                 timestamp: serverTimestamp(),
                 chatID: chatID
             });
+            
+            // Remove request
             await remove(ref(db, `user_friends/${currentUser.uid}/requests/${senderUid}`));
+            
+            // Create private chat entry
             const chatRef = ref(db, `private_chats/${chatID}`);
             await set(chatRef, {
                 participants: {
@@ -995,6 +1306,7 @@
                 status: 'active',
                 createdAt: serverTimestamp()
             });
+            
             alert(`${senderName} is now your friend!`);
         };
 
@@ -1009,6 +1321,7 @@
             if (!currentUser || currentUser.isAnonymous) return;
             const userFriendsRef = ref(db, `user_friends/${currentUser.uid}`);
 
+            // Load Incoming Requests
             onValue(ref(userFriendsRef, 'requests'), (snapshot) => {
                 requestsContainer.innerHTML = '';
                 if (!snapshot.exists()) {
@@ -1031,6 +1344,7 @@
                 });
             });
             
+            // Load Friends List
             onValue(ref(userFriendsRef, 'friends'), (snapshot) => {
                 friendsListContainer.innerHTML = '';
                 if (!snapshot.exists()) {
@@ -1050,6 +1364,7 @@
                         <p>Friend since: ${new Date(friend.timestamp).toLocaleDateString()}</p>
                         <button class="square-btn type-b" style="width: auto; padding: 5px 10px;">✉️ Chat</button>
                     `;
+                    // Click listener to open private chat directly
                     friendItem.addEventListener('click', () => {
                         handleNavigation('inbox-view');
                         openPrivateChat(friend.chatID, friendUid, friend.displayName);
@@ -1072,11 +1387,10 @@
 
 
         // ***************************************************************
-        // 10. MEDIA SHARING (UPLOAD/SEND) - ACTIVE LOGIC
+        // 10. MEDIA SHARING (UPLOAD/SEND)
         // ***************************************************************
 
-        // Helper function to handle file upload to Firebase Storage
-        const uploadFileAndSend = (file, messageText, messagesRef, inputElement) => {
+        const uploadFileAndSend = (file, messageText, messagesRef, inputElement, fileInputElement) => {
             if (!file) {
                 alert("No file selected.");
                 return;
@@ -1095,29 +1409,28 @@
             uploadTask.on('state_changed', 
                 (snapshot) => {
                     const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    console.log(`Upload is ${progress}% done`);
                     inputElement.placeholder = `Uploading: ${Math.round(progress)}%...`;
                 }, 
                 (error) => {
                     console.error("Upload failed:", error);
                     alert("File upload failed: " + error.message);
-                    inputElement.value = ''; // Reset file input
+                    inputElement.value = ''; 
                     inputElement.placeholder = "Type a message...";
+                    fileInputElement.value = ''; // Clear file input
                 }, 
                 () => {
                     getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-                        console.log('File available at', downloadURL);
                         sendChatMessage(messagesRef, messageText, downloadURL, fileType)
                             .then(() => {
-                                inputElement.value = ''; // Reset file input
+                                inputElement.value = ''; 
                                 inputElement.placeholder = "Type a message...";
+                                fileInputElement.value = ''; // Clear file input
                             });
                     });
                 }
             );
         };
 
-        // --- PUBLIC CHAT MEDIA LOGIC ---
         publicUploadFileBtn.addEventListener('click', () => {
             publicFileUploadInput.click();
         });
@@ -1125,12 +1438,11 @@
         publicFileUploadInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
-                const messageText = prompt("Add a caption (optional):") || '';
-                uploadFileAndSend(file, messageText, messagesRef, messageInput); // messageInput is the main input element for placeholder
+                const messageText = messageInput.value.trim() || prompt("Add a caption (optional):") || '';
+                uploadFileAndSend(file, messageText, messagesRef, messageInput, publicFileUploadInput); 
             }
         });
 
-        // --- PRIVATE CHAT MEDIA LOGIC ---
         privateUploadFileBtn.addEventListener('click', () => {
             if (!currentChatID) {
                 alert("Please select a private chat room first.");
@@ -1143,18 +1455,17 @@
             const file = e.target.files[0];
             if (file && currentChatID) {
                 const messagesRef = ref(db, `private_chats/${currentChatID}/messages`);
-                const messageText = prompt("Add a caption (optional):") || '';
-                uploadFileAndSend(file, messageText, messagesRef, privateMessageInput); // privateMessageInput is the main input element
+                const messageText = privateMessageInput.value.trim() || prompt("Add a caption (optional):") || '';
+                uploadFileAndSend(file, messageText, messagesRef, privateMessageInput, privateFileUploadInput); 
             } else if (file) {
                 alert("Please select a private chat room first.");
             }
         });
         
         // ***************************************************************
-        // 9. ADMIN PANEL (NEW ACTIVE LOGIC)
+        // 9. ADMIN PANEL
         // ***************************************************************
 
-        // 💡 FUNCTION: यूज़र्स की लिस्ट लोड करना
         const loadAdminUsers = () => {
             const adminUsersList = document.getElementById('admin-users-list');
             onValue(usersRef, (snapshot) => {
@@ -1170,7 +1481,7 @@
                         <p>UID: ${uid.substring(0, 8)}...</p>
                         <div style="display:flex; gap:5px;">
                             <button class="square-btn type-b" onclick="alert('Functionality to Block/Ban user: ${uid}')">🚫 Block</button>
-                            <button class="square-btn type-b" style="background:#dc3545;" onclick="deleteUser(${uid})">🗑️ Delete Data</button>
+                            <button class="square-btn type-b" style="background:#dc3545;" onclick="deleteUser('${uid}')">🗑️ Delete Data</button>
                         </div>
                     `;
                     adminUsersList.appendChild(userItem);
@@ -1178,7 +1489,6 @@
             });
         };
         
-        // 💡 FUNCTION: पब्लिक मैसेज लिस्ट लोड करना
         const loadAdminPublicMessages = () => {
             const adminPublicMessages = document.getElementById('admin-public-messages');
             const limitedMessagesQuery = query(messagesRef, limitToLast(50));
@@ -1202,7 +1512,7 @@
             });
         };
 
-        // 💡 GLOBAL FUNCTION: मैसेज डिलीट करना (Admin only)
+        // Exposed to global scope for onclick in HTML
         window.deletePublicMessage = (messageKey) => {
             if (!currentUserIsAdmin) {
                 alert("ACCESS DENIED: You are not authorized to perform this action.");
@@ -1215,21 +1525,20 @@
             }
         };
 
-        // 💡 GLOBAL FUNCTION: यूज़र डेटा डिलीट करना (Admin only - only DB entry)
+        // Exposed to global scope for onclick in HTML
         window.deleteUser = (uid) => {
              if (!currentUserIsAdmin) {
                 alert("ACCESS DENIED: You are not authorized to perform this action.");
                 return;
             }
-            if (confirm(`Are you sure you want to delete all data for UID: ${uid}? (This only removes DB data, not Auth user)`)) {
-                // Delete user's profile and friend data
+            if (confirm(`Are you sure you want to delete all data for UID: ${uid}? (This only removes DB data, actual Auth user must be deleted manually)`)) {
                 remove(ref(db, `users/${uid}`));
                 remove(ref(db, `user_friends/${uid}`));
-                alert("User data removed from Realtime DB. (Manual deletion in Firebase Auth is required).");
+                // Note: Chat messages (private/public) and media remain until manually cleaned up
+                alert("User data removed from Realtime DB/Friends List. (Manual deletion in Firebase Auth is required).");
             }
         }
         
-        // Admin Panel Button Listener
         document.getElementById('admin-panel-btn').addEventListener('click', () => {
             if (currentUserIsAdmin) {
                 handleNavigation('admin-view');
@@ -1240,7 +1549,6 @@
             }
         });
         
-        // Admin Panel Tab Switching
         document.querySelector('.admin-panel-tabs').addEventListener('click', (e) => {
             if (e.target.tagName === 'BUTTON' && e.target.dataset.tab) {
                 document.querySelectorAll('.admin-tab-content').forEach(tab => tab.style.display = 'none');
@@ -1253,24 +1561,24 @@
 
 
         // ***************************************************************
-        // UI AND NAVIGATION (Point 1)
+        // 1. UI AND NAVIGATION
         // ***************************************************************
 
-        // Bottom Navigation Handler
         document.getElementById('bottom-nav').addEventListener('click', (e) => {
             if (e.target.tagName === 'BUTTON' && e.target.dataset.view) {
                 if (auth.currentUser || e.target.dataset.view === 'auth-view') {
                     handleNavigation(e.target.dataset.view);
                 } else {
                     alert("Please sign in first!");
+                    handleNavigation('auth-view');
                 }
             }
         });
         
-        // Dark/Light Toggle Placeholder
         document.getElementById('theme-toggle').addEventListener('click', () => {
             document.body.classList.toggle('dark-mode');
         });
+        
     </script>
 </body>
 </html>
