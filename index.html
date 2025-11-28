@@ -1,302 +1,925 @@
 <!doctype html>
-<html lang="en">
+<html lang="hi">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FUNTIMECHAT</title>
-  <meta name="theme-color" content="#9be7ff">
-
+  <title>FUNTIMECHAT — PLANFUN</title>
+  <meta name="description" content="FUNTIMECHAT - App-like chat with Firebase Auth, Realtime DB, Storage, WebRTC placeholders" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
   <style>
+    /* ===== THEME (mobile-first) ===== */
     :root{
-      --bg1:#9be7ff; --bg2:#ffc0e6; --card:#ffffff; --muted:#6b7280;
-      --accent-start:#6ec6ff; --accent-end:#ff8ac6; --text:#042033;
-      --radius:12px; --max-w:980px;
+      --bg:#ffffff; --card:#f7fbff; --text:#0b1220; --muted:#6b7280;
+      --accent:#0ea5e9; --accent-grad:linear-gradient(90deg,#06b6d4,#60a5fa,#a78bfa);
+      --danger:#ef4444; --radius:12px; --btn-pad:10px 14px;
+      font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans',sans-serif;
+      color-scheme: light;
+    }
+    [data-theme="dark"]{
+      --bg:#071226; --card:#071b2a; --text:#e6eef6; --muted:#9aa9bb;
     }
     *{box-sizing:border-box}
-    html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased}
-    body{background:linear-gradient(180deg,var(--bg1),var(--bg2));color:var(--text)}
-
-    .app{max-width:var(--max-w);margin:10px auto;padding:12px;min-height:100vh;display:flex;flex-direction:column;gap:12px}
-
+    html,body{height:100%}
+    body{
+      margin:0;background:linear-gradient(180deg,var(--bg),#f2fbff 60%);
+      color:var(--text);font-size:14px;line-height:1.4;min-height:100vh;display:flex;flex-direction:column;
+    }
     /* Loader */
-    #pf-loader{position:fixed;inset:0;background:linear-gradient(180deg,var(--accent-start),var(--accent-end));display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;padding:20px}
-    .pf-card{background:rgba(255,255,255,0.98);padding:18px;border-radius:16px;text-align:center;box-shadow:0 14px 40px rgba(2,32,51,0.12);width:92%;max-width:420px}
-    .pf-logo{width:88px;height:88px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:900;font-size:30px;color:#042033;background:linear-gradient(135deg,var(--accent-start),var(--accent-end));margin:0 auto}
-    .pf-title{font-weight:800;margin-top:10px;font-size:20px}
-    .pf-sub{color:var(--muted);font-size:13px;margin-top:6px}
+    #loader{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:9999}
+    .logo-pulse{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:white;font-weight:800;font-size:28px;animation:pulse 1.2s infinite}
+    @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
 
-    .hidden{display:none}
+    /* App shell */
+    .app{max-width:1100px;margin:0 auto;width:100%;display:flex;flex-direction:column;min-height:100vh}
+    header.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;position:sticky;top:0;background:transparent;z-index:50}
+    .logo-circle{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:white;font-weight:800;position:fixed;left:12px;top:10px;z-index:60}
+    .site-title{margin-left:68px;font-weight:700}
 
-    /* Topbar */
-    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
-    .leftRow{display:flex;gap:12px;align-items:center}
-    .menuBtn{width:44px;height:44px;border-radius:10px;background:#fff;border:1px solid #eee;display:flex;align-items:center;justify-content:center;cursor:pointer;font-weight:700}
-    .logo{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,var(--accent-start),var(--accent-end));display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--text);font-size:20px}
-    .siteTitle{font-weight:800}
-    .siteSub{color:var(--muted);font-size:13px}
+    .top-actions{display:flex;align-items:center;gap:8px}
+    .btn{padding:var(--btn-pad);border-radius:8px;border:0;background:var(--accent);color:white;font-weight:700;cursor:pointer}
+    .btn-square-b{padding:8px;border-radius:6px;border:2px solid rgba(0,0,0,0.06);background:transparent;cursor:pointer;font-weight:700}
 
-    /* Views */
-    .view{display:none}
-    .view.active{display:block}
-    .card{background:var(--card);border-radius:14px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,0.06)}
+    .main{display:grid;grid-template-columns:1fr;gap:12px;padding:76px 14px 92px}
+    .card{background:var(--card);padding:12px;border-radius:12px;box-shadow:0 8px 24px rgba(2,6,23,0.03)}
+    .row{display:flex;align-items:center;gap:12px}
+    .avatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:white;font-weight:700;background:linear-gradient(90deg,#60a5fa,#34d399)}
 
-    /* Home */
-    .hero{display:flex;flex-direction:column;gap:8px}
-    .btnPrimary{padding:12px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--accent-start),var(--accent-end));color:#022;font-weight:700;cursor:pointer}
-    .btnGhost{padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.06);background:#fff;color:var(--text);cursor:pointer}
+    .inbox{display:flex;flex-direction:column;gap:8px}
+    .inbox .item{display:flex;align-items:center;gap:12px;padding:8px;border-radius:10px;cursor:pointer}
+    .preview{color:var(--muted);font-size:13px}
+    .unread{background:var(--accent);color:white;border-radius:12px;padding:4px 8px;font-size:12px;font-weight:700}
 
-    /* Lists */
-    .list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
-    .list .item{padding:10px;border-radius:10px;background:rgba(255,255,255,0.95);display:flex;justify-content:space-between;align-items:center}
+    .chat-window{display:flex;flex-direction:column;height:68vh;border-radius:12px;overflow:hidden;background:linear-gradient(180deg,rgba(255,255,255,0.6),transparent);border:1px solid rgba(0,0,0,0.04)}
+    .chat-header{padding:10px 12px;border-bottom:1px solid rgba(0,0,0,0.04);display:flex;align-items:center;gap:12px}
+    .messages{flex:1;padding:12px;overflow:auto;display:flex;flex-direction:column;gap:8px}
+    .msg{max-width:78%;padding:10px;border-radius:12px;background:rgba(255,255,255,0.9);box-shadow:0 6px 14px rgba(2,6,23,0.03)}
+    [data-theme="dark"] .msg{background:rgba(255,255,255,0.04)}
+    .msg.me{margin-left:auto;background:var(--accent);color:white}
+    .msg .meta{font-size:11px;color:var(--muted);margin-top:6px}
+
+    .composer{display:flex;gap:8px;padding:10px;border-top:1px solid rgba(0,0,0,0.04);align-items:center}
+    .composer input[type="text"]{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.06);background:transparent}
+
+    nav.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:70;background:linear-gradient(180deg,rgba(255,255,255,0.9),rgba(255,255,255,0.95));border-top:1px solid rgba(0,0,0,0.04);display:flex;justify-content:space-around;padding:8px 6px}
+    .nav-item{display:flex;flex-direction:column;align-items:center;font-size:12px;color:var(--muted);gap:4px}
+    .nav-item.active{color:var(--accent);font-weight:700}
+
+    .overlay{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:none;align-items:center;justify-content:center;z-index:200}
+    .overlay.open{display:flex}
+    .modal{background:var(--card);padding:16px;border-radius:12px;width:min(520px,94%);}
+
+    footer{padding:18px;background:transparent;border-top:1px solid rgba(0,0,0,0.04);display:flex;justify-content:space-between;align-items:center;gap:12px}
     .small{font-size:13px;color:var(--muted)}
-
-    /* Messages placeholder */
-    .messages{height:50vh;border-radius:12px;padding:10px;overflow:auto;background:linear-gradient(180deg,#fbfeff,#f7fcff)}
-
-    /* Bottom nav */
-    .bottomNav{position:fixed;left:10px;right:10px;bottom:10px;background:var(--card);border-radius:12px;padding:8px;display:flex;justify-content:space-around;box-shadow:0 12px 36px rgba(0,0,0,0.12)}
-    .navItem{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--muted);font-size:13px;cursor:pointer}
-    .navItem.active{color:var(--text);font-weight:700}
-
-    @media(min-width:980px){
-      .app{padding:20px}
-      .messages{height:64vh}
-      .bottomNav{left:calc(50% - 480px);right:calc(50% - 480px)}
+    @media(min-width:900px){
+      .main{grid-template-columns:320px 1fr 320px;padding:86px 18px 100px}
+      nav.bottom-nav{display:none}
+      header.topbar{padding-left:92px}
     }
   </style>
 </head>
 <body>
-  <!-- Loader (Point 1) -->
-  <div id="pf-loader" aria-hidden="false" role="status">
-    <div class="pf-card">
-      <div class="pf-logo" aria-hidden="true">MH</div>
-      <div class="pf-title">FUNTIMECHAT</div>
-      <div class="pf-sub">Preparing your chat experience...</div>
-    </div>
-  </div>
-  <!-- End loader -->
+  <!-- LOADER -->
+  <div id="loader" role="status" aria-live="polite"><div class="logo-pulse">MH</div></div>
 
-  <div class="app" id="appRoot" aria-hidden="true">
+  <div class="app" id="app" role="application" aria-label="FUNTIMECHAT">
+    <div class="logo-circle" aria-hidden="true">MH</div>
 
-    <!-- Topbar -->
-    <div class="topbar" role="banner">
-      <div class="leftRow">
-        <div class="menuBtn" id="menuToggle" aria-label="Menu">☰</div>
-        <div class="logo" aria-hidden="true">MH</div>
-        <div>
-          <div class="siteTitle">FUNTIMECHAT</div>
-          <div class="siteSub">Public · Rooms · Private PMs · Calls</div>
+    <header class="topbar" role="banner">
+      <div style="display:flex;align-items:center;gap:12px;margin-left:56px">
+        <div class="site-title">FUNTIMECHAT <span class="small muted">— PLANFUN</span></div>
+      </div>
+      <div class="top-actions">
+        <button id="btn-google" class="btn">Sign in</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button id="themeToggle" class="btn-square-b" aria-pressed="false">Light</button>
+          <button id="profileBtn" class="btn-square-b">Profile</button>
         </div>
       </div>
-      <div id="userArea" aria-live="polite"></div>
-    </div>
+    </header>
 
-    <!-- Views container -->
-    <main id="views" style="flex:1;margin-top:10px">
-
-      <!-- AUTH VIEW (shown when not logged in) -->
-      <section id="view-auth" class="view card active" aria-labelledby="authTitle">
-        <h3 id="authTitle">Sign in to FUNTIMECHAT</h3>
-        <p class="small">Use Google, Email or continue as Guest. Auth wiring will be added in next step.</p>
-
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button id="btnGoogle" class="btnPrimary">Sign in with Google</button>
-          <button id="btnGuest" class="btnGhost">Continue as Guest</button>
-        </div>
-
-        <div style="margin-top:12px;display:flex;gap:8px">
-          <input id="emailInput" placeholder="Email" style="flex:1;padding:10px;border-radius:8px;border:1px solid #eee" />
-          <input id="passInput" placeholder="Password" type="password" style="flex:1;padding:10px;border-radius:8px;border:1px solid #eee" />
-        </div>
-
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <button id="btnSignup" class="btnPrimary">Sign up</button>
-          <button id="btnSignin" class="btnGhost">Sign in</button>
-        </div>
-      </section>
-
-      <!-- HOME VIEW -->
-      <section id="view-home" class="view" aria-labelledby="homeTitle">
-        <div class="card hero">
-          <h3 id="homeTitle">Random Chat (Text only)</h3>
-          <p class="small">Connect instantly with strangers. Skip anytime.</p>
-          <div style="display:flex;gap:8px">
-            <button id="startRandom" class="btnPrimary">Start Random</button>
-            <button id="stopRandom" class="btnGhost">Stop</button>
+    <main class="main" id="main" role="main">
+      <!-- LEFT -->
+      <aside class="inbox card" id="leftCol" aria-label="Inbox and rooms">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <strong>Inbox</strong>
+          <div style="display:flex;gap:6px">
+            <button id="btn-new-room" class="btn-square-b">New Room</button>
+            <button id="btn-guest" class="btn">Guest</button>
           </div>
         </div>
-
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="font-weight:800">Featured Rooms</div>
-            <div><button id="createRoomBtn" class="btnGhost">+ Create</button></div>
-          </div>
-          <div id="roomsList" class="list small"></div>
+        <div style="margin-bottom:8px">
+          <input id="searchInbox" placeholder="Search chats or rooms" style="width:100%;padding:8px;border-radius:10px;border:1px solid rgba(0,0,0,0.06)">
         </div>
-      </section>
-
-      <!-- ROOMS VIEW -->
-      <section id="view-rooms" class="view">
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="font-weight:800" id="roomsTitle">Rooms</div>
-            <div class="small" id="roomsCount">0 rooms</div>
-          </div>
-          <div id="roomsAll" class="list" style="margin-top:8px"></div>
+        <div id="roomsList" style="display:flex;flex-direction:column;gap:8px;overflow:auto;max-height:48vh;padding-right:6px">
+          <!-- populated by JS -->
         </div>
-      </section>
+        <hr style="border:none;border-top:1px solid rgba(0,0,0,0.04);margin:12px 0">
+        <strong>Friends</strong>
+        <div id="friendsList" style="margin-top:8px;display:flex;flex-direction:column;gap:8px"></div>
+      </aside>
 
-      <!-- INBOX VIEW -->
-      <section id="view-inbox" class="view">
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="font-weight:800">Inbox</div>
-            <div class="small">Private messages</div>
-          </div>
-          <div id="inboxList" class="list" style="margin-top:8px"></div>
-        </div>
-      </section>
-
-      <!-- PM VIEW -->
-      <section id="view-pm" class="view">
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="font-weight:800" id="pmTitle">Private Chat</div>
+      <!-- CENTER -->
+      <section class="card chat-window" id="centerCol" aria-live="polite" aria-label="Chat">
+        <div class="chat-header" id="chatHeader" role="region">
+          <div class="row">
+            <div class="avatar" id="chatAvatar">G</div>
             <div>
-              <button id="pmAudio" class="btnGhost">📞</button>
-              <button id="pmVideo" class="btnGhost">📹</button>
+              <div id="chatTitle" style="font-weight:700">Global Room</div>
+              <div id="chatSubtitle" class="small muted">Public room • 0 online</div>
             </div>
           </div>
-        </div>
-
-        <div id="pmMessages" class="messages card"></div>
-
-        <div class="sendRow card" style="display:flex;align-items:center;gap:8px;margin-top:8px">
-          <input id="pmInput" type="text" placeholder="Type message..." />
-          <button id="pmSend" class="btnPrimary">Send</button>
-        </div>
-      </section>
-
-      <!-- PROFILE / ADMIN -->
-      <section id="view-profile" class="view">
-        <div class="card" style="display:flex;gap:12px;align-items:center">
-          <div class="logo" id="myAvatar">MH</div>
-          <div>
-            <div id="myName" style="font-weight:800">Guest</div>
-            <div id="myEmail" class="small">Not logged</div>
-            <div style="height:8px"></div>
-            <input id="displayName" placeholder="Display name" style="padding:8px;border-radius:8px;border:1px solid #eee" />
-            <div style="height:8px"></div>
-            <button id="saveProfile" class="btnGhost">Save</button>
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+            <div id="typingIndicator" class="small muted" style="display:none">Someone is typing…</div>
+            <button id="btn-room-info" class="btn-square-b">Room</button>
+            <button id="btn-report" class="btn-square-b">Report</button>
           </div>
         </div>
 
-        <div class="card">
-          <h3>Admin Controls</h3>
-          <div id="adminPanel" class="small">(Visible to owner/admin)</div>
-        </div>
+        <div class="messages" id="messages" aria-live="polite" aria-label="Messages area"></div>
 
-        <div class="card">
-          <h3>Settings</h3>
-          <div style="display:flex;gap:8px;align-items:center">
-            <label class="small">Dark mode</label>
-            <button id="toggleTheme" class="btnGhost">Toggle</button>
-          </div>
+        <div class="composer" role="form" aria-label="Message composer">
+          <button id="attachBtn" class="btn-square-b">📎</button>
+          <input id="messageInput" type="text" placeholder="Type a message..." aria-label="Message input">
+          <button id="sendBtn" class="btn">Send</button>
         </div>
       </section>
 
+      <!-- RIGHT -->
+      <aside class="card" id="rightCol" aria-label="Details">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>Details</strong><div class="small muted">Step UI</div>
+        </div>
+
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+          <button id="openPmBtn" class="btn-square-b">Open PM</button>
+          <button id="startRandomBtn" class="btn-square-b">Random Chat</button>
+          <button id="openCallsBtn" class="btn-square-b">Calls</button>
+        </div>
+
+        <hr style="margin:12px 0;border:none;border-top:1px solid rgba(0,0,0,0.04)">
+
+        <div>
+          <strong>Media</strong>
+          <p class="small muted">Images, files, camera (mobile)</p>
+          <input id="fileInput" type="file" accept="image/*,video/*,application/*" style="width:100%;margin-top:8px">
+          <div id="filePreview" style="margin-top:8px"></div>
+          <button id="uploadBtn" class="btn" style="margin-top:8px">Upload</button>
+        </div>
+
+        <hr style="margin:12px 0;border:none;border-top:1px solid rgba(0,0,0,0.04)">
+
+        <div id="adminPanel" class="admin-panel" style="display:none">
+          <strong>Admin</strong>
+          <div class="small muted">Owner / Admin tools</div>
+          <button id="btn-ban" class="btn-square-b">Ban user</button>
+          <button id="btn-view-reports" class="btn-square-b">View reports</button>
+          <button id="btn-create-room" class="btn-square-b">Create room</button>
+        </div>
+      </aside>
     </main>
 
+    <nav class="bottom-nav" role="navigation" aria-label="Bottom navigation">
+      <div class="nav-item active" data-target="inbox">Chats</div>
+      <div class="nav-item" data-target="public">Public</div>
+      <div class="nav-item" data-target="random">Random</div>
+      <div class="nav-item" data-target="profile">Profile</div>
+    </nav>
+
+    <!-- REPORT MODAL -->
+    <div id="modalReport" class="overlay" role="dialog" aria-modal="true" aria-hidden="true">
+      <div class="modal">
+        <h3>Report</h3>
+        <p class="small muted">Describe issue — saved to reports/ node.</p>
+        <textarea id="reportText" rows="4" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06)"></textarea>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+          <button id="cancelReport" class="btn-square-b">Cancel</button>
+          <button id="sendReport" class="btn">Send Report</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CALL (placeholder) -->
+    <div id="callOverlay" class="overlay" aria-hidden="true">
+      <div class="modal" style="display:flex;flex-direction:column;align-items:center;gap:10px">
+        <div style="width:260px;height:160px;border-radius:8px;background:linear-gradient(135deg,#0ea5e9,#60a5fa);display:grid;place-items:center;color:white">Remote</div>
+        <div style="width:120px;height:80px;border-radius:8px;background:linear-gradient(135deg,#60a5fa,#34d399);display:grid;place-items:center;color:white">Local</div>
+        <div class="small muted">WebRTC placeholders — signalling via webrtc/{chatId}</div>
+        <div style="display:flex;gap:8px">
+          <button id="btnAcceptCall" class="btn">Accept</button>
+          <button id="btnRejectCall" class="btn-square-b">Reject</button>
+        </div>
+      </div>
+    </div>
+
+    <audio id="msgSound" preload="auto"></audio>
+    <audio id="callRingtone" preload="auto"></audio>
+
+    <footer>
+      <div><a class="small muted" href="#" id="privacy">Privacy Policy</a> · <a class="small muted" href="#" id="terms">Terms</a> · <a class="small muted" href="#" id="reportPage">Report Abuse</a></div>
+      <div class="small muted">© <span id="yr"></span> FUNTIMECHAT — GitHub Pages</div>
+    </footer>
   </div>
 
-  <!-- Bottom Navigation -->
-  <nav class="bottomNav" role="navigation" aria-label="Main">
-    <div class="navItem active" data-view="view-home">🏠<div class="small">Home</div></div>
-    <div class="navItem" data-view="view-rooms">💬<div class="small">Rooms</div></div>
-    <div class="navItem" data-view="view-inbox">📨<div class="small">Inbox</div></div>
-    <div class="navItem" data-view="view-profile">⚙️<div class="small">Profile</div></div>
-  </nav>
+  <!-- ===== SCRIPTS: Firebase modular SDKs via CDN + App code (module) ===== -->
+  <script type="module">
+    // ---------- 1) Firebase imports (modular) ----------
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously, linkWithCredential, EmailAuthProvider, sendPasswordResetEmail, sendEmailVerification, updateProfile } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import { getDatabase, ref as dbRef, push, onChildAdded, onValue, set, update, get, child, remove, query, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+    import { getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
 
-<script>
-/* ===== Step1 UI behavior (no firebase here) ===== */
+    // ---------- 2) Your firebaseConfig (from you) ----------
+    const firebaseConfig = {
+      apiKey: "AIzaSyB__tJ3sv3cB2N3vKHFCv8SYngJENQxwhY",
+      authDomain: "funtimechat69-39947.firebaseapp.com",
+      databaseURL: "https://funtimechat69-39947-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "funtimechat69-39947",
+      storageBucket: "funtimechat69-39947.firebasestorage.app",
+      messagingSenderId: "559638056734",
+      appId: "1:559638056734:web:9329d2b561b6fab106830f"
+    };
 
-/* Hide loader and show app */
-function hideLoader(){
-  const loader = document.getElementById('pf-loader');
-  if(loader){
-    loader.style.transition = 'opacity 300ms ease';
-    loader.style.opacity = '0';
-    setTimeout(()=> loader.remove(), 400);
-  }
-  const app = document.getElementById('appRoot');
-  if(app){ app.removeAttribute('aria-hidden'); }
-  // default show auth view until auth is wired
-  showView('view-auth');
-}
+    // ---------- 3) Init Firebase ----------
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+    const storage = getStorage(app);
 
-/* showView helper */
-function showView(id){
-  document.querySelectorAll('.view').forEach(v=> v.classList.remove('active'));
-  const el = document.getElementById(id);
-  if(el) el.classList.add('active');
-  // set bottom nav active
-  document.querySelectorAll('.navItem').forEach(n=> n.classList.remove('active'));
-  document.querySelectorAll('.navItem').forEach(n=> { if(n.dataset.view === id) n.classList.add('active'); });
-  window.scrollTo({top:0,behavior:'smooth'});
-}
+    // ---------- 4) DOM Helpers ----------
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => Array.from(document.querySelectorAll(s));
+    const now = () => Date.now();
 
-/* Nav click handling */
-document.querySelectorAll('.navItem').forEach(n=>{
-  n.addEventListener('click', ()=> showView(n.dataset.view));
-});
+    // Elements
+    const loader = $('#loader');
+    const themeToggle = $('#themeToggle');
+    const yr = $('#yr'); yr.textContent = new Date().getFullYear();
+    const roomsList = $('#roomsList');
+    const friendsList = $('#friendsList');
+    const messagesEl = $('#messages');
+    const messageInput = $('#messageInput');
+    const sendBtn = $('#sendBtn');
+    const btnGoogle = $('#btn-google');
+    const btnGuest = $('#btn-guest');
+    const profileBtn = $('#profileBtn');
+    const startRandomBtn = $('#startRandomBtn');
+    const openCallsBtn = $('#openCallsBtn');
+    const modalReport = $('#modalReport');
+    const sendReportBtn = $('#sendReport');
+    const reportText = $('#reportText');
+    const cancelReport = $('#cancelReport');
+    const callOverlay = $('#callOverlay');
+    const btnAcceptCall = $('#btnAcceptCall');
+    const btnRejectCall = $('#btnRejectCall');
+    const fileInput = $('#fileInput');
+    const uploadBtn = $('#uploadBtn');
+    const filePreview = $('#filePreview');
+    const adminPanel = $('#adminPanel');
+    const msgSound = $('#msgSound');
+    const callRingtone = $('#callRingtone');
 
-/* Basic placeholders for auth buttons (will be wired with Firebase in Step 2) */
-document.getElementById('btnGuest').onclick = ()=> alert('Guest login will be wired in Step 2');
-document.getElementById('btnGoogle').onclick = ()=> alert('Google login will be wired in Step 2');
-document.getElementById('btnSignup').onclick = ()=> alert('Signup will be wired in Step 2');
-document.getElementById('btnSignin').onclick = ()=> alert('Signin will be wired in Step 2');
+    // UI state
+    let currentRoomId = 'global_room';
+    let currentChatType = 'room'; // 'room' | 'pm' | 'random'
+    let currentChatId = currentRoomId; // roomId or pm.chatId or matchId
+    let currentUser = null;
+    let presenceRef = null;
+    let pc = null; // RTCPeerConnection
+    let localStream = null;
 
-/* Other placeholders */
-document.getElementById('startRandom').onclick = ()=> alert('Random chat will be implemented in a later step');
-document.getElementById('createRoomBtn').onclick = ()=>{
-  const name = prompt('Room name (demo)');
-  if(!name) return;
-  const node = document.createElement('div'); node.className='item';
-  node.innerHTML = `<div>${escapeHtml(name)}</div><div><button class="btnGhost" onclick="joinDemo('${escapeHtml(name)}')">Join</button></div>`;
-  document.getElementById('roomsAll').prepend(node);
-  document.getElementById('roomsList').prepend(node.cloneNode(true));
-  document.getElementById('roomsCount').innerText = document.getElementById('roomsAll').children.length + ' rooms';
-};
+    // Hide loader after init
+    window.addEventListener('load', () => {
+      setTimeout(()=> {
+        loader.style.opacity = 0;
+        setTimeout(()=> loader.style.display = 'none', 300);
+      }, 500);
+    });
 
-function joinDemo(name){
-  document.getElementById('roomsTitle').innerText = name;
-  showView('view-rooms');
-}
+    // Theme toggle
+    let dark = false;
+    themeToggle.addEventListener('click', () => {
+      dark = !dark;
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      themeToggle.textContent = dark ? 'Dark' : 'Light';
+      themeToggle.setAttribute('aria-pressed', dark);
+    });
 
-/* small PM send demo */
-document.getElementById('pmSend').onclick = ()=>{
-  const v = document.getElementById('pmInput').value.trim();
-  if(!v) return;
-  const a = document.getElementById('pmMessages');
-  const d = document.createElement('div');
-  d.className = 'item';
-  d.innerText = 'You: '+v;
-  a.appendChild(d);
-  a.scrollTop = a.scrollHeight;
-  document.getElementById('pmInput').value = '';
-};
+    // ---------- AUTH: Google, Email/Password, Anonymous, Link ----------
+    const provider = new GoogleAuthProvider();
 
-/* escape helper */
-function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    btnGoogle.addEventListener('click', async () => {
+      try {
+        const res = await signInWithPopup(auth, provider);
+        // signed in
+        console.log('Signed in with Google:', res.user.uid);
+      } catch (err) {
+        console.error('Google sign-in error', err);
+        alert('Google sign-in failed: ' + (err.message||err));
+      }
+    });
 
-/* hide loader on window load or fallback after 900ms */
-if(document.readyState === 'complete'){
-  setTimeout(hideLoader, 250);
-} else {
-  window.addEventListener('load', ()=> setTimeout(hideLoader, 250));
-  setTimeout(hideLoader, 1200);
-}
-</script>
+    // Guest login (anonymous)
+    btnGuest.addEventListener('click', async () => {
+      try {
+        const cred = await signInAnonymously(auth);
+        console.log('Signed in anonymously:', cred.user.uid);
+      } catch (err) {
+        console.error('Anonymous sign-in error', err);
+        alert('Anonymous sign-in failed: ' + (err.message||err));
+      }
+    });
 
+    // Profile button - quick actions (update displayName & photo)
+    profileBtn.addEventListener('click', async () => {
+      if(!auth.currentUser) return alert('Sign in first.');
+      const name = prompt('Display name (leave blank to skip):', auth.currentUser.displayName || '');
+      if(name){
+        try { await updateProfile(auth.currentUser, { displayName: name }); alert('Display name updated'); }
+        catch(e){ console.error(e); alert('Update failed'); }
+      }
+      const photo = confirm('Upload profile photo now? (will open file chooser)');
+      if(photo){
+        // reuse file input
+        fileInput.click();
+        fileInput.onchange = async () => {
+          const f = fileInput.files[0];
+          if(!f) return;
+          try {
+            const upRef = storageRef(storage, `uploads/${auth.currentUser.uid}/profile_${Date.now()}_${f.name}`);
+            const task = await uploadBytesResumable(upRef, f);
+            const url = await getDownloadURL(upRef);
+            await updateProfile(auth.currentUser, { photoURL: url });
+            alert('Profile photo uploaded');
+          } catch(err){ console.error(err); alert('Upload failed'); }
+        };
+      }
+    });
+
+    // Email/password signup example (exposed via console)
+    window.signupWithEmail = async (email, pass, displayName) => {
+      try {
+        const u = await createUserWithEmailAndPassword(auth, email, pass);
+        await updateProfile(u.user, { displayName });
+        await sendEmailVerification(u.user);
+        alert('Account created. Verification email sent.');
+      } catch (err) { console.error(err); alert('Signup error: '+err.message); }
+    };
+
+    // Email/password signin example (exposed)
+    window.signinWithEmail = async (email, pass) => {
+      try {
+        await signInWithEmailAndPassword(auth, email, pass);
+      } catch(err){ console.error(err); alert('Signin error: '+err.message); }
+    };
+
+    window.signout = async () => {
+      try { await signOut(auth); } catch(e){ console.error(e) }
+    };
+
+    // Forgot password helper
+    window.sendReset = async (email) => {
+      try {
+        await sendPasswordResetEmail(auth, email);
+        alert('Password reset email sent.');
+      } catch(err){ console.error(err); alert('Reset failed: '+err.message); }
+    };
+
+    // Link anonymous to email/password (example usage)
+    window.linkAnonymousToEmail = async (email, pass) => {
+      if(!auth.currentUser || !auth.currentUser.isAnonymous) return alert('Not anonymous user.');
+      try {
+        const cred = EmailAuthProvider.credential(email, pass);
+        await linkWithCredential(auth.currentUser, cred);
+        alert('Anonymous account linked to email.');
+      } catch(err){ console.error(err); alert('Link failed: '+err.message); }
+    };
+
+    // Observe auth state
+    onAuthStateChanged(auth, async (user) => {
+      currentUser = user;
+      console.log('Auth state changed:', user ? user.uid : 'signed out');
+      if(user){
+        // set up presence (basic)
+        try {
+          const meRef = dbRef(db, `users/${user.uid}`);
+          await set(meRef, { uid: user.uid, displayName: user.displayName || 'Anonymous', photoURL: user.photoURL || null, lastSeen: Date.now(), anon: user.isAnonymous || false });
+          // roles check
+          const roleSnap = await get(child(dbRef(db), `roles/${user.uid}`));
+          if(roleSnap.exists()){
+            adminPanel.style.display = 'block';
+          } else adminPanel.style.display = 'none';
+        } catch(e){ console.error('presence write failed', e); }
+      } else {
+        // signed out
+      }
+    });
+
+    // ---------- REALTIME: rooms, messages, typing indicator ----------
+    // Create default global room if not exists
+    const defaultRoomRef = dbRef(db, `rooms/${currentRoomId}`);
+    (async ()=>{
+      try {
+        const snap = await get(defaultRoomRef);
+        if(!snap.exists()){
+          await set(defaultRoomRef, { title: 'Global Room', createdAt: Date.now() });
+        }
+      } catch(e){ console.warn('create default room err', e); }
+    })();
+
+    // Listen for rooms list
+    const roomsListRef = dbRef(db, 'rooms');
+    onValueSafe(roomsListRef, (snap) => {
+      roomsList.innerHTML = '';
+      const data = snap.val() || {};
+      // Show global + other rooms
+      Object.keys(data).forEach(rid => {
+        const room = data[rid];
+        const item = makeRoomItem(rid, room);
+        roomsList.appendChild(item);
+      });
+    });
+
+    function makeRoomItem(rid, room){
+      const el = document.createElement('div'); el.className='item';
+      el.innerHTML = `<div class="avatar">${(room.title||'R').charAt(0)}</div>
+        <div class="meta"><div class="row"><div class="name">${room.title||rid}</div><div style="margin-left:auto" class="small muted">#public</div></div>
+        <div class="preview">${room.lastMessage?room.lastMessage.slice(0,60):room.description||'Join the room'}</div></div>`;
+      el.addEventListener('click', ()=> joinRoom(rid));
+      return el;
+    }
+
+    // Join a room
+    async function joinRoom(roomId){
+      currentRoomId = roomId;
+      currentChatType = 'room';
+      currentChatId = roomId;
+      $('#chatTitle').textContent = (await get(child(dbRef(db), `rooms/${roomId}/title`))).val() || roomId;
+      $('#chatSubtitle').textContent = 'Public room';
+      loadMessagesForRoom(roomId);
+    }
+
+    // Load last messages for a room and stream new ones
+    let activeMessagesRef = null;
+    function loadMessagesForRoom(roomId){
+      // detach previous
+      if(activeMessagesRef) { /* Firebase Realtime: cannot easily off from ref when using modular API - but we will rely on scoping below */ }
+      messagesEl.innerHTML = '';
+      const msgsRef = dbRef(db, `rooms/${roomId}/messages`);
+      activeMessagesRef = msgsRef;
+      const q = query(msgsRef, orderByChild('ts'), limitToLast(200));
+      onChildAdded(q, (snap)=>{
+        const m = snap.val();
+        appendMessageToUI(m, snap.key);
+      });
+    }
+
+    // Append message
+    function appendMessageToUI(msg, messageId){
+      const div = document.createElement('div');
+      div.className = 'msg' + (msg.uid === (currentUser && currentUser.uid) ? ' me' : '');
+      const content = document.createElement('div');
+      content.textContent = msg.text || (msg.fileName ? `[file] ${msg.fileName}` : '');
+      div.appendChild(content);
+      const meta = document.createElement('div'); meta.className='meta';
+      const ts = new Date(msg.ts || Date.now()).toLocaleTimeString();
+      meta.textContent = `${msg.displayName || 'User'} • ${ts}`;
+      div.appendChild(meta);
+
+      // message actions (reply, edit, delete)
+      const actions = document.createElement('div'); actions.className='small muted';
+      actions.style.marginTop = '6px';
+      if(currentUser && msg.uid === currentUser.uid){
+        const del = document.createElement('button'); del.className='btn-square-b'; del.textContent='Delete';
+        del.addEventListener('click', ()=> deleteMessageUI(msg, messageId));
+        actions.appendChild(del);
+        const edit = document.createElement('button'); edit.className='btn-square-b'; edit.textContent='Edit';
+        edit.addEventListener('click', ()=> editMessageUI(msg, messageId));
+        actions.appendChild(edit);
+      } else {
+        const reply = document.createElement('button'); reply.className='btn-square-b'; reply.textContent='Reply';
+        reply.addEventListener('click', ()=> { messageInput.value = `@${msg.displayName||'User'} `; messageInput.focus(); });
+        actions.appendChild(reply);
+        const block = document.createElement('button'); block.className='btn-square-b'; block.textContent='Block';
+        block.addEventListener('click', ()=> blockUser(msg.uid));
+        actions.appendChild(block);
+      }
+      div.appendChild(actions);
+
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      // play sound if not own message
+      if(!currentUser || msg.uid !== currentUser.uid) playMsgSound();
+    }
+
+    // Delete message (admin or owner or self)
+    async function deleteMessageUI(msg, messageId){
+      if(!confirm('Delete message?')) return;
+      try {
+        // Only allow if owner/admin - here we attempt delete in DB
+        // messages are under rooms/{roomId}/messages/{messageId}
+        await remove(dbRef(db, `rooms/${currentRoomId}/messages/${messageId}`));
+        alert('Deleted (if permissions allow). Admin/Rules must allow deletes.');
+      } catch(e){ console.error(e); alert('Delete failed: '+e.message); }
+    }
+
+    async function editMessageUI(msg, messageId){
+      const newText = prompt('Edit message:', msg.text || '');
+      if(newText === null) return;
+      try {
+        await update(dbRef(db, `rooms/${currentRoomId}/messages/${messageId}`), { text: newText, edited: true });
+        alert('Edited (if perms allow).');
+      } catch(e){ console.error(e); alert('Edit failed'); }
+    }
+
+    function blockUser(uid){
+      if(!confirm('Block this user?')) return;
+      // Save to banned/ or block list for current user
+      if(!currentUser) return alert('Sign in first.');
+      set(dbRef(db, `banned/${uid}`), { bannedBy: currentUser.uid, ts: Date.now() })
+        .then(()=> alert('User blocked (server rules should enforce block).'))
+        .catch(e=>{console.error(e); alert('Block failed')});
+    }
+
+    // send message (rooms or pm)
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', (e)=> { if(e.key==='Enter') sendMessage(); });
+
+    async function sendMessage(){
+      const text = messageInput.value.trim();
+      if(!text && !fileToUpload) return;
+      if(!currentUser){ return alert('Please sign in (or use guest).'); }
+      const payload = { text, uid: currentUser.uid, displayName: currentUser.displayName || 'Anonymous', ts: Date.now(), edited:false };
+      try {
+        if(currentChatType === 'room'){
+          await push(dbRef(db, `rooms/${currentChatId}/messages`), payload);
+          // update lastMessage
+          await update(dbRef(db, `rooms/${currentChatId}`), { lastMessage: text || fileToUpload?.name || '', lastTs: Date.now() });
+        } else if(currentChatType === 'pm'){
+          await push(dbRef(db, `pm/${currentChatId}`), payload);
+        } else if(currentChatType === 'random'){
+          await push(dbRef(db, `random/${currentChatId}/messages`), payload);
+        }
+      } catch(e){ console.error(e); alert('Send failed: '+(e.message||e)); }
+      messageInput.value = '';
+      fileToUpload = null; filePreview.innerHTML = '';
+    }
+
+    // Typing indicator: write to typing/{roomId}/{uid} = true/false
+    messageInput.addEventListener('input', throttleTyping);
+
+    let typingTimeout = null;
+    function throttleTyping(){
+      if(!currentUser) return;
+      set(dbRef(db, `typing/${currentChatId}/${currentUser.uid}`), true);
+      if(typingTimeout) clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(()=> {
+        set(dbRef(db, `typing/${currentChatId}/${currentUser.uid}`), false);
+      }, 2000);
+    }
+    // show typing indicator
+    onValueSafe(dbRef(db, `typing/${currentRoomId}`), snap => {
+      const val = snap.val() || {};
+      const othersTyping = Object.keys(val).filter(k => val[k] && (!currentUser || k !== currentUser.uid));
+      $('#typingIndicator').style.display = othersTyping.length ? 'block' : 'none';
+    });
+
+    // ---------- PRIVATE MESSAGES (Inbox style) ----------
+    // Deterministic chatId
+    function chatIdFor(u1, u2){ return [u1,u2].sort().join('_'); }
+
+    // Open PM
+    $('#openPmBtn').addEventListener('click', async () => {
+      const other = prompt('Enter other user uid (for demo):');
+      if(!other) return;
+      const id = chatIdFor(currentUser.uid, other);
+      currentChatType = 'pm';
+      currentChatId = id;
+      $('#chatTitle').textContent = 'PM';
+      $('#chatSubtitle').textContent = 'Private message';
+      messagesEl.innerHTML = '';
+      // load pm messages
+      const pmRef = dbRef(db, `pm/${id}`);
+      const q = query(pmRef, orderByChild('ts'), limitToLast(200));
+      onChildAdded(q, (snap)=> appendMessageToUI(snap.val(), snap.key));
+    });
+
+    // Inbox list: show last message preview per PM for current user
+    onAuthStateChanged(auth, async (user) => {
+      if(!user) return;
+      // assume pm list under userPms/{uid}/{chatId: {lastMessage, unreadCount}}
+      const userPmsRef = dbRef(db, `userPms/${user.uid}`);
+      onValueSafe(userPmsRef, snap => {
+        friendsList.innerHTML = ''; // reuse friendsList for pm preview demo
+        const val = snap.val() || {};
+        Object.keys(val).forEach(cid => {
+          const item = document.createElement('div'); item.className='item';
+          item.innerHTML = `<div class="avatar">${cid.charAt(0)}</div>
+            <div class="meta"><div class="name">${cid}</div><div class="preview small muted">${val[cid].lastMessage || ''}</div></div>`;
+          item.addEventListener('click', ()=> {
+            currentChatType='pm'; currentChatId=cid;
+            $('#chatTitle').textContent='PM • '+cid; messagesEl.innerHTML='';
+            const pmRef = dbRef(db, `pm/${cid}`);
+            const q = query(pmRef, orderByChild('ts'), limitToLast(200));
+            onChildAdded(q, (snap)=> appendMessageToUI(snap.val(), snap.key));
+          });
+          friendsList.appendChild(item);
+        });
+      });
+    });
+
+    // ---------- RANDOM MATCH (Omegle-style) ----------
+    let isInQueue = false;
+    startRandomBtn.addEventListener('click', startRandom);
+
+    async function startRandom(){
+      if(!currentUser) return alert('Sign in first.');
+      const uid = currentUser.uid;
+      const myQueueRef = dbRef(db, `matchQueue/${uid}`);
+      try {
+        // add to queue
+        await set(myQueueRef, { uid, ts: Date.now() });
+        isInQueue = true;
+        alert('Searching for match...');
+        // listen to matches
+        const matchRef = dbRef(db, `userMatches/${uid}`);
+        onValueSafe(matchRef, async (snap)=>{
+          const val = snap.val();
+          if(val && val.matchUid){
+            // matched
+            const matchUid = val.matchUid;
+            const matchChatId = chatIdFor(uid, matchUid);
+            currentChatType = 'random';
+            currentChatId = matchChatId;
+            $('#chatTitle').textContent = 'Random • matched';
+            $('#chatSubtitle').textContent = 'Anonymous';
+            messagesEl.innerHTML = '';
+            const msgsRef = dbRef(db, `random/${matchChatId}/messages`);
+            const q = query(msgsRef, orderByChild('ts'), limitToLast(200));
+            onChildAdded(q, (snap)=> appendMessageToUI(snap.val(), snap.key));
+            isInQueue = false;
+            // remove from queue
+            await remove(myQueueRef);
+          }
+        });
+
+        // Try simple matching: look for any other uid in queue
+        const queueRef = dbRef(db, 'matchQueue');
+        onValueSafe(queueRef, async (snap) => {
+          const q = snap.val() || {};
+          const uids = Object.keys(q).filter(u=>u!==uid);
+          if(uids.length){
+            const other = uids[0];
+            // create mutual userMatches entries
+            await set(dbRef(db, `userMatches/${uid}`), { matchUid: other, ts: Date.now() });
+            await set(dbRef(db, `userMatches/${other}`), { matchUid: uid, ts: Date.now() });
+            // remove both from queue
+            await remove(dbRef(db, `matchQueue/${uid}`));
+            await remove(dbRef(db, `matchQueue/${other}`));
+          }
+        });
+
+      } catch(e){ console.error(e); alert('Random match failed: '+e.message); }
+    }
+
+    // Skip / Next: simply clear userMatches and re-queue
+    window.skipRandom = async () => {
+      if(!currentUser) return;
+      await remove(dbRef(db, `userMatches/${currentUser.uid}`));
+      startRandom();
+    };
+
+    // ---------- WEBRTC CALL PLACEHOLDER (signaling via DB) ----------
+    // Basic flow: create RTCPeerConnection, add local stream, createOffer, write to webrtc/{chatId}/offer, wait for answer
+    async function startCallWith(targetUid){
+      if(!currentUser) return alert('Sign in first.');
+      const chat = chatIdFor(currentUser.uid, targetUid);
+      try {
+        pc = new RTCPeerConnection();
+        // handle remote stream
+        pc.ontrack = (ev) => {
+          console.log('Remote track', ev);
+          // set remote preview element srcObject if present
+        };
+        // ice candidates => write to db
+        pc.onicecandidate = (ev) => {
+          if(ev.candidate){
+            push(dbRef(db, `webrtc/${chat}/iceCandidates/${currentUser.uid}`), ev.candidate.toJSON());
+          }
+        };
+        localStream = await navigator.mediaDevices.getUserMedia({audio:true, video:true});
+        localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        // write offer
+        await set(dbRef(db, `webrtc/${chat}/offer`), { from: currentUser.uid, sdp: offer.sdp, ts: Date.now() });
+        alert('Offer sent (signaling via DB). Wait for answer and ICE exchange.');
+        // TODO: listen for answer at webrtc/{chat}/answer and ICE from other uid
+      } catch(e){ console.error(e); alert('Call start failed: '+e.message); }
+    }
+
+    // Accept call (simplified placeholder)
+    btnAcceptCall?.addEventListener('click', async () => {
+      callOverlay.classList.remove('open');
+      callOverlay.setAttribute('aria-hidden','true');
+      alert('Accepted (placeholder). Full WebRTC flow requires application-level matching & ICE exchange implementation.');
+    });
+    btnRejectCall?.addEventListener('click', ()=> {
+      callOverlay.classList.remove('open');
+      callOverlay.setAttribute('aria-hidden','true');
+    });
+
+    $('#openCallsBtn').addEventListener('click', ()=> {
+      callOverlay.classList.add('open');
+      callOverlay.setAttribute('aria-hidden','false');
+    });
+
+    // ---------- FRIENDS: requests, accept, list ----------
+    async function sendFriendRequest(toUid){
+      if(!currentUser) return alert('Sign in first.');
+      await push(dbRef(db, `friendRequests/${toUid}`), { from: currentUser.uid, ts: Date.now() });
+      alert('Friend request sent.');
+    }
+    async function acceptFriendRequest(reqKey, fromUid){
+      if(!currentUser) return;
+      // add to friends lists both ways
+      await set(dbRef(db, `friends/${currentUser.uid}/${fromUid}`), { uid: fromUid, ts: Date.now() });
+      await set(dbRef(db, `friends/${fromUid}/${currentUser.uid}`), { uid: currentUser.uid, ts: Date.now() });
+      // remove request
+      await remove(dbRef(db, `friendRequests/${currentUser.uid}/${reqKey}`));
+      alert('Friend added.');
+    }
+    // show friend requests
+    onValueSafe(dbRef(db, `friendRequests`), snap => {
+      // developer can wire UI for incoming friend requests
+    });
+
+    // List friends
+    onAuthStateChanged(auth, user => {
+      if(!user) return;
+      const fRef = dbRef(db, `friends/${user.uid}`);
+      onValueSafe(fRef, snap => {
+        friendsList.innerHTML = '';
+        const val = snap.val() || {};
+        Object.keys(val).forEach(uid => {
+          const it = document.createElement('div'); it.className='item';
+          it.innerHTML = `<div class="avatar">${(val[uid].uid||'U').charAt(0)}</div>
+            <div class="meta"><div class="name">${val[uid].uid}</div><div class="preview small muted">Friend</div></div>
+            <button class="btn-square-b">Chat</button>`;
+          friendsList.appendChild(it);
+        });
+      });
+    });
+
+    // ---------- SAFETY & MODERATION ----------
+    // Report user or message -> save to reports/
+    $('#btn-report').addEventListener('click', ()=> {
+      modalReport.classList.add('open'); modalReport.setAttribute('aria-hidden','false');
+    });
+    $('#cancelReport').addEventListener('click', ()=> {
+      modalReport.classList.remove('open'); modalReport.setAttribute('aria-hidden','true');
+    });
+    $('#sendReport')?.addEventListener('click', async () => {
+      const text = reportText.value.trim();
+      if(!text) return alert('Enter details.');
+      const payload = { reporter: currentUser ? currentUser.uid : null, targetChat: currentChatId, reason:text, ts: Date.now() };
+      try { await push(dbRef(db, 'reports'), payload); alert('Report submitted.'); reportText.value=''; modalReport.classList.remove('open'); }
+      catch(e){ console.error(e); alert('Report failed'); }
+    });
+
+    // Bad-word filter (client-side starter)
+    const badWords = ['spam','badword1','badword2']; // TODO: expand server-side
+    function containsBadWord(text){
+      const t = (text||'').toLowerCase();
+      return badWords.some(b => t.includes(b));
+    }
+
+    // Moderation tools: mute/clear chat, pin messages (admin)
+    $('#btn-view-reports')?.addEventListener('click', async ()=> {
+      // admin: view reports listing
+      const snap = await get(dbRef(db, 'reports'));
+      console.log('Reports:', snap.val());
+      alert('Reports logged to console (for demo). Implement admin UIs for manage.');
+    });
+
+    // ---------- MEDIA & STORAGE ----------
+    let fileToUpload = null;
+    fileInput.addEventListener('change', () => {
+      const f = fileInput.files[0];
+      if(!f) return;
+      fileToUpload = f;
+      filePreview.innerHTML = `<div class="small muted">Selected: ${f.name} (${Math.round(f.size/1024)} KB)</div>`;
+    });
+
+    uploadBtn.addEventListener('click', async () => {
+      if(!fileToUpload) return alert('Select file first.');
+      if(!currentUser) return alert('Sign in first.');
+      const upRef = storageRef(storage, `uploads/${currentUser.uid}/${Date.now()}_${fileToUpload.name}`);
+      try {
+        const task = await uploadBytesResumable(upRef, fileToUpload);
+        const url = await getDownloadURL(upRef);
+        // Save metadata in DB
+        await push(dbRef(db, `uploads/${currentUser.uid}`), { fileName: fileToUpload.name, url, size: fileToUpload.size, ts: Date.now() });
+        alert('Uploaded and metadata saved.');
+        filePreview.innerHTML = `<a href="${url}" target="_blank" rel="noopener">Open uploaded file</a>`;
+        fileToUpload = null;
+      } catch(e){ console.error(e); alert('Upload failed: '+e.message); }
+    });
+
+    // ---------- NOTIFICATIONS & SOUNDS ----------
+    async function requestNotifications(){
+      if(!('Notification' in window)) return;
+      const perm = await Notification.requestPermission();
+      if(perm === 'granted') new Notification('FUNTIMECHAT', { body: 'Notifications enabled' });
+    }
+    // Play msg sound
+    function playMsgSound(){
+      try {
+        // TODO: replace with actual asset URL added to repo
+        if(!msgSound.src) msgSound.src = ''; // set if you have asset, else noop
+        msgSound.play().catch(()=>{});
+      } catch(e){ console.warn('sound play failed', e); }
+    }
+
+    // ---------- ADMIN / OWNER PANEL ----------
+    // Admin UI buttons (ban/create room)
+    $('#btn-ban')?.addEventListener('click', async () => {
+      const uid = prompt('Enter uid to ban:');
+      if(!uid) return;
+      await set(dbRef(db, `banned/${uid}`), { bannedBy: currentUser?currentUser.uid:null, ts: Date.now() });
+      alert('Ban recorded (server rules must enforce).');
+    });
+    $('#btn-create-room')?.addEventListener('click', async () => {
+      const title = prompt('Room title:');
+      if(!title) return;
+      const r = await push(dbRef(db, 'rooms'), { title, createdAt: Date.now() });
+      alert('Room created: ' + r.key);
+    });
+
+    // ---------- HOSTING, RULES & LEGAL ----------
+    // Footer links (open placeholders)
+    $('#privacy').addEventListener('click', (e)=> { e.preventDefault(); alert('Open Privacy Policy page (create privacy.html).'); });
+    $('#terms').addEventListener('click', (e)=> { e.preventDefault(); alert('Open Terms page.'); });
+    $('#reportPage').addEventListener('click', (e)=> { e.preventDefault(); alert('Open Report Abuse page.'); });
+
+    // ---------- UTILITIES ----------
+    function onValueSafe(ref, cb){
+      try { onValue(ref, cb); } catch(e){ console.warn('onValue attach failed', e); }
+    }
+
+    // Simple helper to remove DOM children safely
+    function empty(el){ while(el.firstChild) el.removeChild(el.firstChild); }
+
+    // ---------- INITIAL UI SETUP ----------
+    // create a couple of default rooms in UI if none exist
+    (async ()=>{
+      try {
+        const snap = await get(dbRef(db, 'rooms'));
+        if(!snap.exists()){
+          await set(dbRef(db, 'rooms'), {
+            global_room: { title: 'Global Room', description: 'Public global room', createdAt: Date.now() },
+            sports: { title: 'Sports', description: 'Sports talk', createdAt: Date.now() }
+          });
+        }
+      } catch(e){ console.error('init rooms failed', e); }
+    })();
+
+    // Load default room messages on start
+    joinRoom(currentRoomId);
+
+    // Basic presence/lastSeen updater
+    setInterval(async ()=> {
+      if(currentUser) {
+        try { await update(dbRef(db, `users/${currentUser.uid}`), { lastSeen: Date.now() }); } catch(e){}
+      }
+    }, 30000);
+
+    // Basic nav item click behavior
+    $$('.nav-item').forEach(it => {
+      it.addEventListener('click', ()=> {
+        $$('.nav-item').forEach(x=>x.classList.remove('active'));
+        it.classList.add('active');
+        const t = it.dataset.target;
+        if(t === 'profile') {
+          if(!currentUser) alert('Sign in to view profile'); else alert('Profile: ' + (currentUser.displayName || currentUser.uid));
+        } else if(t==='random') startRandom();
+        else if(t==='public') window.scrollTo({top:0,behavior:'smooth'});
+        else if(t==='inbox') window.scrollTo({top:0,behavior:'smooth'});
+      });
+    });
+
+    // expose some helpful functions to console for debugging
+    window.funtime = {
+      joinRoom, startRandom, startCallWith, sendFriendRequest, acceptFriendRequest, signupWithEmail, signinWithEmail, signout, sendReset, linkAnonymousToEmail, toggleAdminPanel: ()=> adminPanel.style.display = adminPanel.style.display === 'none' ? 'block' : 'none'
+    };
+
+    // Safety: check firebase config format quickly
+    (function validateConfig(){
+      if(!firebaseConfig.apiKey) console.warn('Firebase apiKey empty');
+      if(!firebaseConfig.databaseURL) console.warn('Firebase databaseURL empty - Realtime DB features need databaseURL');
+    })();
+
+    // End of module
+  </script>
 </body>
 </html>
