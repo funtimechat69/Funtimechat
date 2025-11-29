@@ -9,41 +9,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-    
-    <style>
-        /* Basic styles for the new profile popup (style.css mein add karna behtar hai) */
-        .popup-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .popup-content {
-            background: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            position: relative;
-        }
-        .close-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 1.2em;
-        }
-    </style>
-</head>
+    </head>
 <body>
 
     <div id="loading-screen" class="screen active">
@@ -202,18 +168,6 @@
             <button id="end-call-btn" class="square-btn" style="background-color: red;">Hang Up 📞</button>
         </div>
     </div>
-    
-    <div id="user-profile-popup" class="popup-modal" style="display:none;">
-        <div class="popup-content">
-            <button class="close-btn" onclick="closeUserProfilePopup()">❌</button>
-            <img id="popup-user-photo" src="default.png" alt="Profile" class="profile-pic" style="width: 60px; height: 60px; border-radius: 50%; margin-bottom: 10px;">
-            <h3 id="popup-user-name"></h3>
-            <p id="popup-user-details" style="font-size: 0.9em; margin-bottom: 15px;"></p>
-            <hr>
-            <button id="popup-start-pm-btn" class="square-btn type-b" style="width: 100%; margin-bottom: 10px;">Start Private Chat</button>
-            <button id="popup-send-fr-btn" class="square-btn" style="width: 100%;">Send Friend Request</button>
-        </div>
-    </div>
 
 
     <script>
@@ -222,14 +176,16 @@
         // ***************************************************************
 
         // Yahan apni Firebase configuration dalein!
+        // 🛑 ZAROORI FIX: Niche diye gaye sabhi "YOUR_ACTUAL_..." placeholders ko
+        // apne Firebase project ki asli (original) values se **TURANT** replace karein.
+        // Iske bina app Firebase se connect nahi ho payega!
         const firebaseConfig = {
-            apiKey: "YOUR_FIREBASE_CONFIG",
-            authDomain: "YOUR_FIREBASE_CONFIG",
-            databaseURL: "YOUR_FIREBASE_CONFIG",
-            projectId: "YOUR_FIREBASE_CONFIG",
-            // storageBucket: "YOUR_FIREBASE_CONFIG", // Storage hata diya gaya hai
-            messagingSenderId: "YOUR_FIREBASE_CONFIG",
-            appId: "YOUR_FIREBASE_CONFIG"
+            apiKey: "YOUR_ACTUAL_API_KEY_HERE", 
+            authDomain: "YOUR_ACTUAL_AUTH_DOMAIN_HERE", 
+            databaseURL: "YOUR_ACTUAL_DATABASE_URL_HERE", 
+            projectId: "YOUR_ACTUAL_PROJECT_ID_HERE", 
+            messagingSenderId: "YOUR_ACTUAL_MESSAGING_SENDER_ID_HERE", 
+            appId: "YOUR_ACTUAL_APP_ID_HERE" 
         };
 
         // Firebase ko initialize karein
@@ -237,12 +193,13 @@
         const auth = firebase.auth();
         const database = firebase.database();
 
-        // Database References (CRITICAL: Paths corrected to match the final JSON rules)
+        // Database References
         const usersRef = database.ref('users');
-        const publicMessagesRef = database.ref('public_rooms/global/messages'); // CORRECTED PATH
-        const friendsRef = database.ref('user_friends'); // Friend list and requests
+        const publicMessagesRef = database.ref('public_messages');
+        const friendsRef = database.ref('friends');
+        const requestsRef = database.ref('requests');
         const typingRef = database.ref('typing_status');
-        const randomMatchRef = database.ref('matchQueue'); // CORRECTED PATH
+        const randomMatchRef = database.ref('random_match');
         const callsRef = database.ref('calls');
         
         // ***************************************************************
@@ -310,13 +267,11 @@
             showView(viewId);
         }
         
-        // UPDATED: Added isPublicChat parameter for click handler
-        function createMessageCard(message, isOutgoing, messageId = null, showName = true, isAdminView = false, isPublicChat = false) {
+        function createMessageCard(message, isOutgoing, messageId = null, showName = true, isAdminView = false) {
             const card = document.createElement('div');
             card.className = `message-card ${isOutgoing ? 'outgoing' : 'incoming'}`;
             card.dataset.messageId = messageId;
-            card.dataset.senderUid = message.senderId; // Added sender UID
-            
+
             let nameHtml = showName ? `<span class="message-sender">${message.senderName || 'Guest'}</span>` : '';
             let timeHtml = `<span class="message-time">${new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>`;
             
@@ -336,15 +291,6 @@
             }
 
             card.innerHTML = header + text + status + adminControls;
-            
-            // NEW LOGIC: Click listener for public messages to open profile
-            if (isPublicChat && !isOutgoing && message.senderId && message.senderId !== currentUser?.uid) {
-                card.classList.add('clickable-message'); // Add class for styling/cursor
-                card.addEventListener('click', () => {
-                    openUserProfile(message.senderId, message.senderName);
-                });
-            }
-
             return card;
         }
 
@@ -475,21 +421,12 @@
 
             const messageData = {
                 senderId: currentUser.uid,
-                senderName: currentUser.displayName || currentUser.email?.split('@')[0] || 'User',
+                senderName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Guest',
                 text: text,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             };
 
-            publicMessagesRef.push(messageData)
-                .then(() => {
-                    // Success
-                })
-                .catch(error => {
-                    // Error Handling
-                    alert("Error sending message. Check Firebase Rules! Error: " + error.message);
-                    console.error("Firebase Write Error:", error);
-                });
-
+            publicMessagesRef.push(messageData);
             input.value = '';
             stopTypingIndicator('public');
         });
@@ -500,8 +437,8 @@
             const messageId = snapshot.key;
             const isOutgoing = message.senderId === currentUser?.uid;
             
-            // Public messages mein name hamesha dikhao, aur isPublicChat = true set kiya
-            const card = createMessageCard(message, isOutgoing, messageId, true, false, true); 
+            // Public messages mein name hamesha dikhao
+            const card = createMessageCard(message, isOutgoing, messageId, true, false); 
             
             const list = document.getElementById('public-messages');
             list.appendChild(card);
@@ -548,10 +485,7 @@
                 return;
             }
             
-            // Check karein ki typers mein khud ka UID na ho
-            const typingUsers = Object.keys(typers)
-                .filter(uid => uid !== (currentUser?.uid))
-                .map(uid => typers[uid]);
+            const typingUsers = Object.values(typers).filter(name => name !== (currentUser.displayName || 'User'));
             
             if (typingUsers.length > 0) {
                 if (typingUsers.length === 1) {
@@ -576,12 +510,12 @@
             if (!currentUser || currentUser.uid === recipientUid) return;
 
             // Sender (currentUser) se request bhejna
-            friendsRef.child(recipientUid).child('requests').child(currentUser.uid).set({
+            requestsRef.child(recipientUid).child(currentUser.uid).set({
                 senderName: currentUser.displayName || 'User',
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             })
             .then(() => alert(`Friend request sent to ${recipientUid.substring(0, 6)}`))
-            .catch(e => alert("Error sending request: " + e.message + ". Check Firebase Rules!"));
+            .catch(e => alert("Error sending request: " + e.message));
         };
         
         // Request Accept/Reject
@@ -590,8 +524,8 @@
             
             if (action === 'accept') {
                 // Dono taraf friend add karein
-                friendsRef.child(currentUser.uid).child('friends').child(senderUid).set(true);
-                friendsRef.child(senderUid).child('friends').child(currentUser.uid).set(true);
+                friendsRef.child(currentUser.uid).child(senderUid).set(true);
+                friendsRef.child(senderUid).child(currentUser.uid).set(true);
                 
                 // Chat room banayein (UIDs ko alphabetically sort karke)
                 const chatId = [currentUser.uid, senderUid].sort().join('_');
@@ -604,7 +538,7 @@
             }
             
             // Request ko delete karein
-            friendsRef.child(currentUser.uid).child('requests').child(senderUid).remove();
+            requestsRef.child(currentUser.uid).child(senderUid).remove();
             loadFriendRequests(); // UI update karein
         };
         
@@ -614,8 +548,7 @@
             const requestsList = document.getElementById('requests-container');
             requestsList.innerHTML = '';
             
-            // Path: user_friends/{currentUser.uid}/requests
-            friendsRef.child(currentUser.uid).child('requests').on('value', (snapshot) => {
+            requestsRef.child(currentUser.uid).on('value', (snapshot) => {
                 requestsList.innerHTML = '';
                 const requests = snapshot.val();
                 if (!requests) {
@@ -648,8 +581,7 @@
             const friendsListContainer = document.getElementById('friends-list-container');
             friendsListContainer.innerHTML = '';
             
-            // Path: user_friends/{currentUser.uid}/friends
-            friendsRef.child(currentUser.uid).child('friends').on('value', (snapshot) => {
+            friendsRef.child(currentUser.uid).on('value', (snapshot) => {
                 friendsListContainer.innerHTML = '';
                 const friends = snapshot.val();
                 if (!friends) {
@@ -738,7 +670,6 @@
         };
         
         function loadPrivateMessages(chatId) {
-            // Path: chats/{chatId}/messages
             database.ref(`chats/${chatId}/messages`).limitToLast(50).on('child_added', (snapshot) => {
                 const message = snapshot.val();
                 const messageId = snapshot.key;
@@ -792,16 +723,7 @@
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             };
             
-            // Path: chats/{chatId}/messages
-            database.ref(`chats/${privateChatId}/messages`).push(messageData)
-                 .then(() => {
-                    // Success
-                })
-                .catch(error => {
-                    alert("Error sending PM. Check Firebase Rules! Error: " + error.message);
-                    console.error("Firebase Write Error:", error);
-                });
-
+            database.ref(`chats/${privateChatId}/messages`).push(messageData);
             input.value = '';
             stopTypingIndicator(privateChatId);
         });
@@ -836,7 +758,6 @@
             statusElement.textContent = 'Searching for a match... ⏳';
             document.getElementById('start-random-chat-btn').textContent = 'Cancel Match';
 
-            // Path: matchQueue
             const snapshot = await randomMatchRef.once('value');
             const queue = snapshot.val();
 
@@ -903,26 +824,47 @@
             ]
         };
 
-        document.getElementById('start-video-call-btn').addEventListener('click', () => initiateCall('video'));
-        document.getElementById('start-audio-call-btn').addEventListener('click', () => initiateCall('audio'));
-        document.getElementById('end-call-btn').addEventListener('click', endCall);
-        
-        // Video/Audio Toggles
-        document.getElementById('toggle-video-btn').addEventListener('click', () => {
+        // Call Control Bindings FIX: Function to bind/re-bind event listeners
+        function bindCallControls(type) {
+            // End Call Button
+            document.getElementById('end-call-btn').addEventListener('click', endCall);
+
+            // Toggle Audio
+            document.getElementById('toggle-audio-btn').addEventListener('click', () => {
+                const audioTrack = localStream.getAudioTracks()[0];
+                if (audioTrack) {
+                    audioTrack.enabled = !audioTrack.enabled;
+                    document.getElementById('toggle-audio-btn').textContent = audioTrack.enabled ? '🎙️ Audio ON' : '🎙️ Audio OFF';
+                }
+            });
+            
+            // Toggle Video
+            document.getElementById('toggle-video-btn').addEventListener('click', () => {
+                const videoTrack = localStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    videoTrack.enabled = !videoTrack.enabled;
+                    document.getElementById('toggle-video-btn').textContent = videoTrack.enabled ? '📹 Video ON' : '📹 Video OFF';
+                }
+            });
+
+            // Initial button text set karein
             const videoTrack = localStream.getVideoTracks()[0];
-            if (videoTrack) {
-                videoTrack.enabled = !videoTrack.enabled;
-                document.getElementById('toggle-video-btn').textContent = videoTrack.enabled ? '📹 Video ON' : '📹 Video OFF';
+            if (type === 'video' && videoTrack) {
+                document.getElementById('toggle-video-btn').textContent = '📹 Video ON';
+            } else if (videoTrack) {
+                // Audio call ke liye video band rakhein
+                 videoTrack.enabled = false;
+                 document.getElementById('toggle-video-btn').textContent = '📹 Video OFF';
             }
-        });
-        document.getElementById('toggle-audio-btn').addEventListener('click', () => {
             const audioTrack = localStream.getAudioTracks()[0];
             if (audioTrack) {
-                audioTrack.enabled = !audioTrack.enabled;
-                document.getElementById('toggle-audio-btn').textContent = audioTrack.enabled ? '🎙️ Audio ON' : '🎙️ Audio OFF';
+                document.getElementById('toggle-audio-btn').textContent = '🎙️ Audio ON';
             }
-        });
-
+        }
+        
+        document.getElementById('start-video-call-btn').addEventListener('click', () => initiateCall('video'));
+        document.getElementById('start-audio-call-btn').addEventListener('click', () => initiateCall('audio'));
+        // document.getElementById('end-call-btn').addEventListener('click', endCall); // Handled in bindCallControls
 
         async function initiateCall(type) {
             if (!privateChatRecipient || !currentUser) return;
@@ -948,11 +890,14 @@
                 // Tracks add karna
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
                 
+                // Controls ko bind karein jab stream ready ho
+                bindCallControls(type); 
+
                 // Offer banana
                 const offer = await peerConnection.createOffer();
                 await peerConnection.setLocalDescription(offer);
                 
-                // Offer ko database mein save karna (Path: calls/{callId})
+                // Offer ko database mein save karna
                 callsRef.child(callId).set({
                     callerId: currentUser.uid,
                     recipientId: privateChatRecipient.uid,
@@ -1004,10 +949,16 @@
                 peerConnection = null;
             }
             if (callId) {
+                // Agar caller end kar raha hai, toh database se record hata de
                 callsRef.child(callId).remove();
                 callId = null;
             }
             document.getElementById('call-ui').style.display = 'none';
+            document.getElementById('call-controls').innerHTML = `
+                <button id="toggle-video-btn" class="square-btn" style="background-color: orange;">📹 Toggle Video</button>
+                <button id="toggle-audio-btn" class="square-btn" style="background-color: orange;">🎙️ Toggle Audio</button>
+                <button id="end-call-btn" class="square-btn" style="background-color: red;">Hang Up 📞</button>
+            `; // Controls ko original state mein layein
         }
         
         // Incoming Call Listener
@@ -1016,7 +967,8 @@
                 const callData = snapshot.val();
                 const incomingCallId = snapshot.key;
                 
-                if (callData.callerId !== currentUser.uid) {
+                // Agar callData mein answer nahi hai (i.e., yeh naya offer hai) aur caller hum nahi hain
+                if (callData.callerId !== currentUser.uid && !callData.answer) {
                     handleIncomingCall(incomingCallId, callData);
                 }
             });
@@ -1030,13 +982,16 @@
             document.getElementById('call-status-text').textContent = `Incoming ${callData.callType} call from ${callData.callerId.substring(0, 6)}...`;
             ringtone.play().catch(e => console.log("Ringtone error:", e));
 
+            const controlsContainer = document.getElementById('call-controls');
+            controlsContainer.innerHTML = ''; // FIX: Clear previous controls
+
             // Answer button add karein
             const answerBtn = document.createElement('button');
             answerBtn.textContent = 'Answer';
             answerBtn.className = 'square-btn';
             answerBtn.style.backgroundColor = 'green';
             answerBtn.onclick = () => answerCall(callData);
-            document.getElementById('call-controls').appendChild(answerBtn);
+            controlsContainer.appendChild(answerBtn);
             
             // Reject button
             const rejectBtn = document.createElement('button');
@@ -1044,17 +999,19 @@
             rejectBtn.className = 'square-btn';
             rejectBtn.style.backgroundColor = 'red';
             rejectBtn.onclick = () => endCall();
-            document.getElementById('call-controls').appendChild(rejectBtn);
+            controlsContainer.appendChild(rejectBtn);
         }
         
         async function answerCall(callData) {
             ringtone.pause();
-            document.getElementById('call-controls').innerHTML = `
+            
+            // FIX: Controls ko set aur re-bind karein
+            const controlsContainer = document.getElementById('call-controls');
+            controlsContainer.innerHTML = `
                 <button id="toggle-video-btn" class="square-btn" style="background-color: orange;">📹 Toggle Video</button>
                 <button id="toggle-audio-btn" class="square-btn" style="background-color: orange;">🎙️ Toggle Audio</button>
                 <button id="end-call-btn" class="square-btn" style="background-color: red;">Hang Up 📞</button>
-            `; // Controls reset karein
-            document.getElementById('end-call-btn').addEventListener('click', endCall);
+            `;
 
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ 
@@ -1069,6 +1026,9 @@
                 
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
                 
+                // Controls ko bind karein jab stream ready ho
+                bindCallControls(callData.callType); 
+
                 // Offer set karein
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(callData.offer));
                 
@@ -1188,8 +1148,9 @@
                  .catch(e => alert("Error updating role: " + e.message));
         };
         
-        // Note: deleteUserAccount function requires Firebase Admin SDK on a backend, 
-        // which cannot be done from the frontend. This is a placeholder.
+        // Note: deleteUserAccount function ko chalane ke liye Firebase Admin SDK ki zaroorat hoti hai 
+        // jo ki sirf backend server/Cloud Functions par hi chalta hai. 
+        // Frontend (client-side) code se account delete karna sambhav nahi hai aur yeh suraksha (security) ke khilaaf hai.
         window.deleteUserAccount = (uid) => {
              alert(`Account deletion for UID ${uid.substring(0, 6)} requires a secure backend (Firebase Admin SDK). Cannot perform from frontend code.`);
         };
@@ -1220,74 +1181,10 @@
                  })
                  .catch(e => alert("Error deleting message: " + e.message));
         };
-        
-        // ***************************************************************
-        // XI. USER PROFILE POPUP LOGIC (New Section for Profile Tap)
-        // ***************************************************************
-        
-        function closeUserProfilePopup() {
-            document.getElementById('user-profile-popup').style.display = 'none';
-        }
 
-        window.openUserProfile = async (uid, name) => {
-            if (!currentUser) {
-                alert("Please sign in to view profiles.");
-                return;
-            }
-            if (uid === currentUser.uid) return; // Khud ki profile nahi kholni
-
-            // Fetch user details to get latest status/info
-            const snapshot = await usersRef.child(uid).once('value');
-            const userData = snapshot.val();
-            
-            if (!userData) {
-                alert("User details not found.");
-                return;
-            }
-
-            // Set popup content
-            document.getElementById('popup-user-name').textContent = userData.name;
-            document.getElementById('popup-user-photo').src = userData.photoURL || 'default.png';
-            document.getElementById('popup-user-details').innerHTML = `
-                Email: ${userData.email || 'N/A'}<br>
-                Status: <span style="color: ${userData.isOnline ? 'green' : 'gray'};">${userData.isOnline ? 'Online' : 'Offline'}</span>
-            `;
-            
-            // Set PM button action
-            const pmBtn = document.getElementById('popup-start-pm-btn');
-            pmBtn.onclick = () => {
-                startPrivateChat(uid, userData.name);
-                closeUserProfilePopup();
-            };
-
-            // Set FR button action
-            const frBtn = document.getElementById('popup-send-fr-btn');
-            
-            // Check if they are already friends (disable/change FR button)
-            const friendsSnapshot = await friendsRef.child(currentUser.uid).child('friends').child(uid).once('value');
-            const pendingRequestSnapshot = await friendsRef.child(uid).child('requests').child(currentUser.uid).once('value');
-            
-            if (friendsSnapshot.exists()) {
-                frBtn.textContent = 'Already Friends ✅';
-                frBtn.disabled = true;
-            } else if (pendingRequestSnapshot.exists()) {
-                 frBtn.textContent = 'Request Sent (Pending)';
-                frBtn.disabled = true;
-            } else {
-                frBtn.textContent = 'Send Friend Request';
-                frBtn.disabled = false;
-                frBtn.onclick = () => {
-                    sendFriendRequest(uid);
-                    frBtn.textContent = 'Request Sent (Pending)';
-                    frBtn.disabled = true;
-                };
-            }
-
-            document.getElementById('user-profile-popup').style.display = 'flex';
-        };
 
         // ***************************************************************
-        // XII. FINAL UI EVENT LISTENERS
+        // XI. FINAL UI EVENT LISTENERS
         // ***************************************************************
 
         // Bottom Navigation (Sabse important)
